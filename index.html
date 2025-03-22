@@ -1,356 +1,382 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Get Current Location and Search Address</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-  <script>
-    window.onload = function() {
-      const originalLog = console.log;
-      console.log = function(...args) {
-        originalLog.apply(console, args);
-        if (window.parent) {
-          window.parent.postMessage(args.join(" "), "*");
-        }
-      };
-
-      const originalErrorLog = console.error;
-      console.error = function(...args) {
-        originalErrorLog.apply(console, args);
-        if (window.parent) {
-          window.parent.postMessage(args.join(" "), "*");
-        }
-      };
-    };
-  </script>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: #f9f9f9;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      line-height: 1.6;
-      padding-bottom: 40px;
-    }
-    header {
-      background: #2c3e50;
-      color: #ecf0f1;
-      width: 100%;
-      padding: 20px 10px;
-      text-align: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    header h1 {
-      font-size: 1.8em;
-    }
-    #display {
-      width: 90%;
-      max-width: 800px;
-      margin-bottom: 20px;
-    }
-    #controls {
-      margin: 15px 0;
-      text-align: center;
-    }
-    #controls input[type="text"] {
-      width: 70%;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 16px;
-    }
-    #controls button {
-      padding: 9px 15px;
-      margin-left: 8px;
-      border: none;
-      border-radius: 4px;
-      background: #3498db;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    #controls button:hover {
-      background: #2980b9;
-    }
-    #location {
-      background: #fff;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      font-size: 16px;
-      position: relative;
-      overflow: hidden;
-      transition: background-color 0.5s ease;
-    }
-    #location.loading {
-      background-color: #eaf4ff;
-    }
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      animation: spin 1s linear infinite;
-      position: absolute;
-      right: 15px;
-      top: 15px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    #map {
-      width: 100%;
-      height: 400px;
-      border: 2px solid #3498db;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-      transition: opacity 0.5s ease;
-    }
-    .skeleton {
-      height: 20px;
-      background: #ddd;
-      margin: 5px 0;
-      border-radius: 3px;
-      width: 80%;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.4; }
-      100% { opacity: 1; }
-    }
-    .update-animation {
-      animation: highlight 1s ease-out;
-    }
-    @keyframes highlight {
-      0% { background-color: #ffffcc; }
-      100% { background-color: transparent; }
-    }
-    @media (max-width: 600px) {
-      #map, #location {
-        width: 95%;
-      }
-      #controls input[type="text"] {
-        width: 60%;
-      }
-    }
-  </style>
-  <script>
-    var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
-    
-    // Utility function to add update animation
-    function animateUpdate(element) {
-      element.classList.add('update-animation');
-      setTimeout(function(){
-        element.classList.remove('update-animation');
-      }, 1000);
-    }
-    
-    // Function to fetch locality using BigDataCloud API
-    function fetchLocality(lat, lon) {
-      fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          var locality = data.locality || 'Unknown';
-          var locationDiv = document.getElementById('location');
-          locationDiv.innerHTML += '<br><strong>Locality:</strong> ' + locality;
-          animateUpdate(locationDiv);
-        })
-        .catch(function(error) {
-          console.error('Error fetching locality:', error);
-          document.getElementById('location').innerHTML += '<br><strong>Locality:</strong> Unable to fetch';
-        });
-    }
-    
-    // Function to fetch nearby bus stops using Overpass API
-    function fetchBusStops(lat, lon, callback) {
-      var query = '[out:json][timeout:25];\n' +
-                  '(\n' +
-                  '  node["highway"="bus_stop"](around:1000, ' + lat + ', ' + lon + ');\n' +
-                  '  node["public_transport"="platform"](around:1000, ' + lat + ', ' + lon + ');\n' +
-                  ');\n' +
-                  'out body;\n' +
-                  '>;\n' +
-                  'out skel qt;';
-      var url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
-      fetch(url)
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          if (data.elements.length === 0) {
-            document.getElementById('location').innerHTML += '<br>No bus stops found nearby.';
-          }
-          busStopsData = data.elements;
-          if (typeof callback === "function") {
-            callback();
-          }
-        })
-        .catch(function(error) {
-          console.error('Error fetching bus stops:', error);
-          document.getElementById('location').innerHTML += '<br>Unable to fetch bus stops.';
-          if (typeof callback === "function") {
-            callback();
-          }
-        });
-    }
-    
-    // Function to initialize the Leaflet map and add markers with smooth transitions
-    function initializeMap(lat, lon) {
-      if (mapInstance) {
-        mapInstance.remove();
-      }
-      mapInstance = L.map('map').setView([lat, lon], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(mapInstance);
-      var userMarker = L.marker([lat, lon]).addTo(mapInstance);
-      userMarker.bindPopup('Selected location').openPopup();
-      if (busStopsData) {
-        busStopsData.forEach(function(stop) {
-          var marker = L.marker([stop.lat, stop.lon]).addTo(mapInstance);
-          var busStopInfo = '';
-          var busStopInfoUrl = "https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=";
-          if (stop.tags) {
-            busStopInfo = (stop.tags.ref ? "<a href='" + busStopInfoUrl + stop.tags.ref + "' target='_blank'>" + stop.tags.ref + "</a>" : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
-          }
-          busStopInfo = busStopInfo || 'Bus stop';
-          marker.bindPopup(busStopInfo);
-        });
-      }
-      var mapDiv = document.getElementById('map');
-      mapDiv.style.opacity = 0;
-      setTimeout(function() {
-        mapDiv.style.opacity = 1;
-      }, 300);
-    }
-    
-    // Geolocation functions
-    function showPosition(position) {
-      currentLatitude = position.coords.latitude;
-      currentLongitude = position.coords.longitude;
-      var locationDiv = document.getElementById('location');
-      locationDiv.classList.add('loading');
-      locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br><strong>Longitude:</strong> ' + currentLongitude;
-      fetchLocality(currentLatitude, currentLongitude);
-      fetchBusStops(currentLatitude, currentLongitude, function() {
-        initializeMap(currentLatitude, currentLongitude);
-        locationDiv.classList.remove('loading');
-      });
-    }
-    
-    function showError(error) {
-      var message;
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          message = "User denied the request for Geolocation.";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          message = "Location information is unavailable.";
-          break;
-        case error.TIMEOUT:
-          message = "The request to get user location timed out.";
-          break;
-        default:
-          message = "An unknown error occurred.";
-          break;
-      }
-      var locationDiv = document.getElementById('location');
-      locationDiv.innerHTML = message;
-      locationDiv.classList.remove('loading');
-    }
-    
-    // Function to search address using Nominatim API and update map
-    function searchAddress() {
-      var addressInput = document.getElementById('addressInput');
-      var query = addressInput.value.trim();
-      if (!query) return;
-      var locationDiv = document.getElementById('location');
-      locationDiv.classList.add('loading');
-      locationDiv.innerHTML = "Searching for address...";
-      var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query);
-      fetch(url)
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          if (data.length > 0) {
-            var result = data[0];
-            var lat = parseFloat(result.lat);
-            var lon = parseFloat(result.lon);
-            currentLatitude = lat;
-            currentLongitude = lon;
-            locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br><strong>Longitude:</strong> ' + lon;
-            fetchLocality(lat, lon);
-            fetchBusStops(lat, lon, function() {
-              initializeMap(lat, lon);
-              locationDiv.classList.remove('loading');
-            });
-          } else {
-            locationDiv.innerHTML = "Address not found.";
-            locationDiv.classList.remove('loading');
-          }
-        })
-        .catch(function(error) {
-          console.error('Error searching address:', error);
-          locationDiv.innerHTML = "Error searching for address.";
-          locationDiv.classList.remove('loading');
-        });
-    }
-    
-    window.addEventListener('load', function() {
-      if (navigator.geolocation) {
-        var options = {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        };
-        navigator.geolocation.getCurrentPosition(showPosition, showError, options);
-      } else {
-        var locationDiv = document.getElementById('location');
-        locationDiv.innerHTML = "Geolocation is not supported by this browser.";
-        locationDiv.classList.remove('loading');
-      }
-      
-      document.getElementById('searchButton').addEventListener('click', function(e) {
-        e.preventDefault();
-        searchAddress();
-      });
-      
-      document.getElementById('addressInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          searchAddress();
-        }
-      });
-    });
-  </script>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Get Current Location and Search Address</title>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js">
+		</script>
+		<script>
+			window.onload = function() {
+				const originalLog = console.log;
+				console.log = function(...args) {
+					originalLog.apply(console, args);
+					if (window.parent) {
+						window.parent.postMessage(args.join(" "), "*");
+					}
+				};
+				
+				const originalErrorLog = console.error;
+				console.error = function(...args) {
+					originalErrorLog.apply(console, args);
+					if (window.parent) {
+						window.parent.postMessage(args.join(" "), "*");
+					}
+				};
+			};
+		</script>
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+				background: #f9f9f9;
+				color: #333;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				min-height: 100vh;
+				line-height: 1.6;
+				padding-bottom: 40px;
+			}
+			header {
+				background: #2c3e50;
+				color: #ecf0f1;
+				width: 100%;
+				padding: 20px 10px;
+				text-align: center;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+			}
+			header h1 {
+				font-size: 1.8em;
+			}
+			#display {
+				width: 90%;
+				max-width: 800px;
+				margin-bottom: 20px;
+			}
+			#controls {
+				margin: 15px 0;
+				text-align: center;
+			}
+			#controls input[type="text"] {
+				width: 70%;
+				padding: 8px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				font-size: 16px;
+			}
+			#controls button {
+				padding: 9px 15px;
+				margin-left: 8px;
+				border: none;
+				border-radius: 4px;
+				background: #3498db;
+				color: #fff;
+				font-size: 16px;
+				cursor: pointer;
+				transition: background 0.3s ease;
+			}
+			#controls button:hover {
+				background: #2980b9;
+			}
+			#location {
+				background: #fff;
+				padding: 15px;
+				margin: 10px 0;
+				border-radius: 5px;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+				font-size: 16px;
+				position: relative;
+				overflow: hidden;
+				transition: background-color 0.5s ease;
+			}
+			#location.loading {
+				background-color: #eaf4ff;
+			}
+			.spinner {
+				border: 4px solid #f3f3f3;
+				border-top: 4px solid #3498db;
+				border-radius: 50%;
+				width: 30px;
+				height: 30px;
+				animation: spin 1s linear infinite;
+				position: absolute;
+				right: 15px;
+				top: 15px;
+			}
+			@keyframes spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+			#map {
+				width: 100%;
+				height: 400px;
+				border: 2px solid #3498db;
+				border-radius: 5px;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+				margin-bottom: 20px;
+				transition: opacity 0.5s ease;
+			}
+			.skeleton {
+				height: 20px;
+				background: #ddd;
+				margin: 5px 0;
+				border-radius: 3px;
+				width: 80%;
+				animation: pulse 1.5s infinite;
+			}
+			@keyframes pulse {
+				0% { opacity: 1; }
+				50% { opacity: 0.4; }
+				100% { opacity: 1; }
+			}
+			.update-animation {
+				animation: highlight 1s ease-out;
+			}
+			@keyframes highlight {
+				0% { background-color: #ffffcc; }
+				100% { background-color: transparent; }
+			}
+			@media (max-width: 600px) {
+				#map, #location {
+					width: 95%;
+				}
+				#controls input[type="text"] {
+					width: 60%;
+				}
+			}
+		</style>
+		<script>
+			var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
+			
+			// Utility function to add update animation
+			function animateUpdate(element) {
+				element.classList.add('update-animation');
+				setTimeout(function(){
+					element.classList.remove('update-animation');
+				}, 1000);
+			}
+			
+			// Function to fetch locality using BigDataCloud API
+			function fetchLocality(lat, lon) {
+				fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
+				.then(function(response) { return response.json(); })
+				.then(function(data) {
+					var locality = data.locality || 'Unknown';
+					var locationDiv = document.getElementById('location');
+					locationDiv.innerHTML += '<br>
+					<strong>Locality:</strong> ' + locality;
+					animateUpdate(locationDiv);
+				})
+				.catch(function(error) {
+					console.error('Error fetching locality:', error);
+					document.getElementById('location').innerHTML += '<br>
+					<strong>Locality:</strong> Unable to fetch';
+				});
+			}
+			
+			// Function to fetch nearby bus stops using Overpass API
+			function fetchBusStops(lat, lon, callback) {
+				var query = '[out:json][timeout:25];\n' +
+				'(\n' +
+				'  node["highway"="bus_stop"](around:1000, ' + lat + ', ' + lon + ');\n' +
+				'  node["public_transport"="platform"](around:1000, ' + lat + ', ' + lon + ');\n' +
+				');\n' +
+				'out body;\n' +
+				'>;\n' +
+				'out skel qt;';
+				var url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+				fetch(url)
+				.then(function(response) { return response.json(); })
+				.then(function(data) {
+					if (data.elements.length === 0) {
+						document.getElementById('location').innerHTML += '<br>No bus stops found nearby.';
+					}
+					busStopsData = data.elements;
+					if (typeof callback === "function") {
+						callback();
+					}
+				})
+				.catch(function(error) {
+					console.error('Error fetching bus stops:', error);
+					document.getElementById('location').innerHTML += '<br>Unable to fetch bus stops.';
+					if (typeof callback === "function") {
+						callback();
+					}
+				});
+			}
+			
+			// Function to initialize the Leaflet map and add markers with smooth transitions
+			function initializeMap(lat, lon) {
+				if (mapInstance) {
+					mapInstance.remove();
+				}
+				mapInstance = L.map('map').setView([lat, lon], 15);
+				L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '© OpenStreetMap contributors'
+				}).addTo(mapInstance);
+				var userMarker = L.marker([lat, lon]).addTo(mapInstance);
+				userMarker.bindPopup('Selected location').openPopup();
+				if (busStopsData) {
+					busStopsData.forEach(function(stop) {
+						var marker = L.marker([stop.lat, stop.lon]).addTo(mapInstance);
+						var busStopInfo = '';
+						var busStopInfoUrl = "https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=";
+						if (stop.tags) {
+							busStopInfo = (stop.tags.ref ? "<a href='" + busStopInfoUrl + stop.tags.ref + "' target='_blank'>" + stop.tags.ref + "</a>" : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
+						}
+						busStopInfo = busStopInfo || 'Bus stop';
+						marker.bindPopup(busStopInfo);
+					});
+				}
+				var mapDiv = document.getElementById('map');
+				mapDiv.style.opacity = 0;
+				setTimeout(function() {
+					mapDiv.style.opacity = 1;
+				}, 300);
+			}
+			
+			// Geolocation functions
+			function showPosition(position) {
+				currentLatitude = position.coords.latitude;
+				currentLongitude = position.coords.longitude;
+				var locationDiv = document.getElementById('location');
+				locationDiv.classList.add('loading');
+				locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br>
+				<strong>Longitude:</strong> ' + currentLongitude;
+				fetchLocality(currentLatitude, currentLongitude);
+				fetchBusStops(currentLatitude, currentLongitude, function() {
+					initializeMap(currentLatitude, currentLongitude);
+					locationDiv.classList.remove('loading');
+				});
+			}
+			
+			function showError(error) {
+				var message;
+				switch (error.code) {
+					case error.PERMISSION_DENIED:
+					message = "User denied the request for Geolocation.";
+					break;
+					case error.POSITION_UNAVAILABLE:
+					message = "Location information is unavailable.";
+					break;
+					case error.TIMEOUT:
+					message = "The request to get user location timed out.";
+					break;
+					default:
+					message = "An unknown error occurred.";
+					break;
+				}
+				var locationDiv = document.getElementById('location');
+				locationDiv.innerHTML = message;
+				locationDiv.classList.remove('loading');
+			}
+			
+			// Function to get current location using browser geolocation
+			function getCurrentLocation() {
+				if (navigator.geolocation) {
+					var options = {
+						enableHighAccuracy: true,
+						timeout: 5000,
+						maximumAge: 0
+					};
+					navigator.geolocation.getCurrentPosition(showPosition, showError, options);
+				} else {
+					var locationDiv = document.getElementById('location');
+					locationDiv.innerHTML = "Geolocation is not supported by this browser.";
+					locationDiv.classList.remove('loading');
+				}
+			}
+			
+			// Function to search address using Nominatim API and update map
+			function searchAddress() {
+				var addressInput = document.getElementById('addressInput');
+				var query = addressInput.value.trim();
+				if (!query) return;
+				var locationDiv = document.getElementById('location');
+				locationDiv.classList.add('loading');
+				locationDiv.innerHTML = "Searching for address...";
+				var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query);
+				fetch(url)
+				.then(function(response) { return response.json(); })
+				.then(function(data) {
+					if (data.length > 0) {
+						var result = data[0];
+						var lat = parseFloat(result.lat);
+						var lon = parseFloat(result.lon);
+						currentLatitude = lat;
+						currentLongitude = lon;
+						locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br>
+						<strong>Longitude:</strong> ' + lon;
+						fetchLocality(lat, lon);
+						fetchBusStops(lat, lon, function() {
+							initializeMap(lat, lon);
+							locationDiv.classList.remove('loading');
+						});
+					} else {
+						locationDiv.innerHTML = "Address not found.";
+						locationDiv.classList.remove('loading');
+					}
+				})
+				.catch(function(error) {
+					console.error('Error searching address:', error);
+					locationDiv.innerHTML = "Error searching for address.";
+					locationDiv.classList.remove('loading');
+				});
+			}
+			
+			window.addEventListener('load', function() {
+				// Get initial location
+				getCurrentLocation();
+				
+				document.getElementById('searchButton').addEventListener('click', function(e) {
+					e.preventDefault();
+					searchAddress();
+				});
+				
+				document.getElementById('addressInput').addEventListener('keypress', function(e) {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+						searchAddress();
+					}
+				});
+				
+				// Add event listener for the update location button
+				document.getElementById('updateLocation').addEventListener('click', function(e) {
+					e.preventDefault();
+					var locationDiv = document.getElementById('location');
+					locationDiv.classList.add('loading');
+					locationDiv.innerHTML = "Fetching your location...<div class='spinner' id='spinner'>
+				</div>";
+				getCurrentLocation();
+			});
+		});
+	</script>
 </head>
 <body>
-  <header>
-    <h1>Discover Your Location</h1>
-  </header>
-  <main id="display">
-    <div id="controls">
-      <input type="text" id="addressInput" placeholder="Enter an address to search...">
-      <button id="searchButton">Search</button>
-    </div>
-    <div id="location" class="loading" aria-live="polite">
-      Fetching your location...
-      <div class="spinner" id="spinner"></div>
-    </div>
-    <div id="map" style="opacity:0;"></div>
-  </main>
+	<header>
+		<h1>Discover Your Location</h1>
+	</header>
+	<main id="display">
+		<div id="controls">
+			<input type="text" id="addressInput" placeholder="Enter an address to search...">
+			<button id="searchButton">Search</button>
+			<div style="margin-top:10px;">
+				<button id="updateLocation">Update Location</button>
+			</div>
+		</div>
+		<div id="location" class="loading" aria-live="polite">
+			Fetching your location...
+			<div class="spinner" id="spinner">
+			</div>
+		</div>
+		<div id="map" style="opacity:0;">
+		</div>
+	</main>
 </body>
 </html>
