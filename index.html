@@ -4,8 +4,6 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Get Current Location and Search Address</title>
-		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<script>
 			window.onload = function() {
 				const originalLog = console.log;
@@ -25,6 +23,8 @@
 				};
 			};
 		</script>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<style>
 			* {
 				box-sizing: border-box;
@@ -153,6 +153,10 @@
 		<script>
 			var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
 			
+			// Set default coordinates to Singapore Marina Bay Sands
+			var defaultLat = 1.2834;
+			var defaultLon = 103.8607;
+			
 			// Utility function to add update animation
 			function animateUpdate(element) {
 				element.classList.add('update-animation');
@@ -256,21 +260,25 @@
 				var message;
 				switch (error.code) {
 					case error.PERMISSION_DENIED:
-					message = "User denied the request for Geolocation.";
+					message = "User denied the request for Geolocation. Showing default location: Singapore Marina Bay Sands.";
 					break;
 					case error.POSITION_UNAVAILABLE:
-					message = "Location information is unavailable.";
+					message = "Location information is unavailable. Showing default location: Singapore Marina Bay Sands.";
 					break;
 					case error.TIMEOUT:
-					message = "The request to get user location timed out.";
+					message = "The request to get user location timed out. Showing default location: Singapore Marina Bay Sands.";
 					break;
 					default:
-					message = "An unknown error occurred.";
+					message = "An unknown error occurred. Showing default location: Singapore Marina Bay Sands.";
 					break;
 				}
 				var locationDiv = document.getElementById('location');
-				locationDiv.innerHTML = message;
-				locationDiv.classList.remove('loading');
+				locationDiv.innerHTML = message + '<br><strong>Latitude:</strong> ' + defaultLat + '<br><strong>Longitude:</strong> ' + defaultLon;
+				fetchLocality(defaultLat, defaultLon);
+				fetchBusStops(defaultLat, defaultLon, function() {
+					initializeMap(defaultLat, defaultLon);
+					locationDiv.classList.remove('loading');
+				});
 			}
 			
 			// Function to get current location using browser geolocation
@@ -284,8 +292,12 @@
 					navigator.geolocation.getCurrentPosition(showPosition, showError, options);
 				} else {
 					var locationDiv = document.getElementById('location');
-					locationDiv.innerHTML = "Geolocation is not supported by this browser.";
-					locationDiv.classList.remove('loading');
+					locationDiv.innerHTML = "Geolocation is not supported by this browser. Showing default location: Singapore Marina Bay Sands.";
+					fetchLocality(defaultLat, defaultLon);
+					fetchBusStops(defaultLat, defaultLon, function() {
+						initializeMap(defaultLat, defaultLon);
+						locationDiv.classList.remove('loading');
+					});
 				}
 			}
 			
@@ -326,7 +338,7 @@
 			}
 			
 			window.addEventListener('load', function() {
-				// Get initial location
+				// Try to get current location. If fails, default location is used.
 				getCurrentLocation();
 				
 				document.getElementById('searchButton').addEventListener('click', function(e) {
