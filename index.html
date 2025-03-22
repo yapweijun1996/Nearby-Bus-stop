@@ -338,6 +338,14 @@
 			}
 			
 			window.addEventListener('load', function() {
+                // URL parameter synchronization for busId and busNo (tags)
+                var urlParams = new URLSearchParams(window.location.search);
+                var zipcodeParam = urlParams.get('zipcode');
+                var countryParam = urlParams.get('country');
+                
+                var addressParam = zipcodeParam + " " + countryParam; 
+                
+                
 				// Try to get current location. If fails, default location is used.
 				getCurrentLocation();
 				
@@ -361,6 +369,12 @@
 					locationDiv.innerHTML = "Fetching your location...<div class='spinner' id='spinner'></div>";
 					getCurrentLocation();
 				});
+                
+                
+                if(addressParam){
+                    document.getElementById('addressInput').value = addressParam;
+                    document.getElementById('searchButton').click();
+                }
 			});
 		</script>
 	</head>
