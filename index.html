@@ -1,122 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Get Current Location and Locality</title>
-    <!-- Include Leaflet CSS and JS from CDN -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Current Location and Locality</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <style>
+    /* Reset and Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding-bottom: 40px;
+    }
+    header {
+      background: #2c3e50;
+      color: #ecf0f1;
+      width: 100%;
+      padding: 20px 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    header h1 {
+      font-size: 1.8em;
+    }
+    #display {
+      width: 90%;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+    #location {
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      font-size: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.5s ease;
+    }
+    #location.loading {
+      background-color: #eaf4ff;
+    }
+    /* Spinner Styles */
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      position: absolute;
+      right: 15px;
+      top: 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #map {
+      width: 100%;
+      height: 400px;
+      border: 2px solid #3498db;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      transition: opacity 0.5s ease;
+    }
+    /* Skeleton screen for potential future use */
+    .skeleton {
+      height: 20px;
+      background: #ddd;
+      margin: 5px 0;
+      border-radius: 3px;
+      width: 80%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+    /* Micro-interaction for updates */
+    .update-animation {
+      animation: highlight 1s ease-out;
+    }
+    @keyframes highlight {
+      0% { background-color: #ffffcc; }
+      100% { background-color: transparent; }
+    }
+    @media (max-width: 600px) {
+      #map, #location {
+        width: 95%;
+      }
+    }
+  </style>
+  <script>
+    window.onload = function() {
+      // Override console log and error to post messages to parent window if present.
+      var originalLog = console.log;
+      console.log = function() {
+        originalLog.apply(console, arguments);
+        if (window.parent) {
+          window.parent.postMessage(Array.from(arguments).join(" "), "*");
+        }
+      };
+      var originalErrorLog = console.error;
+      console.error = function() {
+        originalErrorLog.apply(console, arguments);
+        if (window.parent) {
+          window.parent.postMessage(Array.from(arguments).join(" "), "*");
+        }
+      };
+
+      // Initial location fetch on page load
+      if (navigator.geolocation) {
+        var options = {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        };
+        navigator.geolocation.getCurrentPosition(showPosition, showError, options);
+      } else {
+        var locationDiv = document.getElementById('location');
+        locationDiv.innerHTML = "Geolocation is not supported by this browser.";
+        locationDiv.classList.remove('loading');
+      }
+    };
+
+    var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
+
+    // Utility function to add update animation
+    function animateUpdate(element) {
+      element.classList.add('update-animation');
+      setTimeout(function(){
+        element.classList.remove('update-animation');
+      }, 1000);
+    }
+    
+    // Function to fetch locality using BigDataCloud API
+    function fetchLocality(lat, lon) {
+      fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          var locality = data.locality || 'Unknown';
+          var locationDiv = document.getElementById('location');
+          locationDiv.innerHTML += '<br><strong>Locality:</strong> ' + locality;
+          animateUpdate(locationDiv);
+        })
+        .catch(function(error) {
+          console.error('Error fetching locality:', error);
+          document.getElementById('location').innerHTML += '<br><strong>Locality:</strong> Unable to fetch';
+        });
+    }
+
+    // Function to fetch nearby bus stops using Overpass API
+    function fetchBusStops(lat, lon, callback) {
+      var query = '[out:json][timeout:25];\n' +
+                  '(\n' +
+                  '  node["highway"="bus_stop"](around:1000, ' + lat + ', ' + lon + ');\n' +
+                  '  node["public_transport"="platform"](around:1000, ' + lat + ', ' + lon + ');\n' +
+                  ');\n' +
+                  'out body;\n' +
+                  '>;\n' +
+                  'out skel qt;';
+      var url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+      fetch(url)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (data.elements.length === 0) {
+            document.getElementById('location').innerHTML += '<br>No bus stops found nearby.';
+          }
+          busStopsData = data.elements;
+          if (typeof callback === "function") {
+            callback();
+          }
+        })
+        .catch(function(error) {
+          console.error('Error fetching bus stops:', error);
+          document.getElementById('location').innerHTML += '<br>Unable to fetch bus stops.';
+          if (typeof callback === "function") {
+            callback();
+          }
+        });
+    }
+
+    // Function to initialize the Leaflet map and add markers with smooth transitions
+    function initializeMap(lat, lon) {
+      if (mapInstance) {
+        mapInstance.remove();
+      }
+      mapInstance = L.map('map').setView([lat, lon], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(mapInstance);
+      var userMarker = L.marker([lat, lon]).addTo(mapInstance);
+      userMarker.bindPopup('Your location').openPopup();
+      if (busStopsData) {
+        busStopsData.forEach(function(stop) {
+          var marker = L.marker([stop.lat, stop.lon]).addTo(mapInstance);
+          var busStopInfo = '';
+          if (stop.tags) {
+            busStopInfo = (stop.tags.ref ? stop.tags.ref : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
+          }
+          busStopInfo = busStopInfo || 'Bus stop';
+          marker.bindPopup(busStopInfo);
+        });
+      }
+      // Fade in the map with micro-interaction
+      var mapDiv = document.getElementById('map');
+      mapDiv.style.opacity = 0;
+      setTimeout(function() {
+        mapDiv.style.opacity = 1;
+      }, 300);
+    }
+
+    // Geolocation functions
+    function showPosition(position) {
+      currentLatitude = position.coords.latitude;
+      currentLongitude = position.coords.longitude;
+      var locationDiv = document.getElementById('location');
+      locationDiv.classList.add('loading');
+      // Display location without spinner
+      locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br><strong>Longitude:</strong> ' + currentLongitude;
+      fetchLocality(currentLatitude, currentLongitude);
+      fetchBusStops(currentLatitude, currentLongitude, function() {
+        initializeMap(currentLatitude, currentLongitude);
+        locationDiv.classList.remove('loading');
+      });
+    }
+
+    function showError(error) {
+      var message;
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          message = "User denied the request for Geolocation.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          message = "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          message = "The request to get user location timed out.";
+          break;
+        default:
+          message = "An unknown error occurred.";
+          break;
+      }
+      var locationDiv = document.getElementById('location');
+      locationDiv.innerHTML = message;
+      locationDiv.classList.remove('loading');
+    }
+  </script>
 </head>
 <body>
-    <h1>Get Your Current Location and Locality</h1>
-    <div id="location"></div>
-    <!-- Div for the map -->
-    <div id="map" style="height: 400px; width: 100%;"></div>
-    <script>
-        // Function to fetch locality using BigDataCloud API
-        function fetchLocality(lat, lon) {
-            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-                .then(response => response.json())
-                .then(data => {
-                    const locality = data.locality || 'Unknown';
-                    document.getElementById('location').innerHTML += `<br>Locality: ${locality}`;
-                })
-                .catch(error => {
-                    console.error('Error fetching locality:', error);
-                    document.getElementById('location').innerHTML += `<br>Locality: Unable to fetch`;
-                });
-        }
-
-        // Function to fetch nearby bus stops using Overpass API
-        function fetchBusStops(lat, lon) {
-            const query = `[out:json][timeout:25];
-            (
-              node["highway"="bus_stop"](around:1000, ${lat}, ${lon});
-              node["public_transport"="platform"](around:1000, ${lat}, ${lon});
-            );
-            out body;
-            >;
-            out skel qt;`;
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.elements.length === 0) {
-                        document.getElementById('location').innerHTML += '<br>No bus stops found nearby.';
-                    } else {
-                        initializeMap(lat, lon, data.elements);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching bus stops:', error);
-                    document.getElementById('location').innerHTML += '<br>Unable to fetch bus stops.';
-                });
-        }
-
-        // Function to initialize the Leaflet map and add markers
-        function initializeMap(lat, lon, busStops) {
-            // Initialize map centered on user's location with zoom level 15
-            const map = L.map('map').setView([lat, lon], 15);
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-            // Add marker for user's location
-            L.marker([lat, lon]).addTo(map).bindPopup('Your location').openPopup();
-            // Add markers for each bus stop with bus stop code or ID
-            busStops.forEach(stop => {
-                const marker = L.marker([stop.lat, stop.lon]).addTo(map);
-                // Look for bus stop code in 'ref' or 'local_ref', then fall back to 'name' or 'Bus stop'
-                // const busStopId = stop.tags.ref || stop.tags.local_ref || stop.tags.name || 'Bus stop';
-                const busStopId = stop.tags.ref +"<br>"+ stop.tags.name;
-                marker.bindPopup(busStopId);
-            });
-        }
-
-        // Check if the browser supports geolocation
-        if (navigator.geolocation) {
-            const options = {
-                enableHighAccuracy: true,  // Use GPS for better accuracy
-                timeout: 5000,            // Wait up to 5 seconds
-                maximumAge: 0             // Don’t use cached data
-            };
-            // Request the user's current position
-            navigator.geolocation.getCurrentPosition(showPosition, showError, options);
-        } else {
-            document.getElementById('location').innerHTML = "Geolocation is not supported by this browser.";
-        }
-
-        // Handle successful geolocation response
-        function showPosition(position) {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            // Display coordinates
-            document.getElementById('location').innerHTML = `Latitude: ${latitude}<br>Longitude: ${longitude}`;
-            // Fetch locality and bus stops
-            fetchLocality(latitude, longitude);
-            fetchBusStops(latitude, longitude);
-        }
-
-        // Handle geolocation errors
-        function showError(error) {
-            let message;
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    message = "User denied the request for Geolocation.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    message = "Location information is unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    message = "The request to get user location timed out.";
-                    break;
-                case error.UNKNOWN_ERROR:
-                    message = "An unknown error occurred.";
-                    break;
-            }
-            document.getElementById('location').innerHTML = message;
-        }
-    </script>
+  <header>
+    <h1>Discover Your Location</h1>
+  </header>
+  <main id="display">
+    <div id="location" class="loading" aria-live="polite">
+      Fetching your location...
+      <div class="spinner" id="spinner"></div>
+    </div>
+    <div id="map" style="opacity:0;"></div>
+  </main>
 </body>
 </html>
