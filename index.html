@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Current Location and Locality</title>
+</head>
+<body>
+    <h1>Get Your Current Location and Locality</h1>
+    <div id="location"></div>
+    <script>
+        // Check if the browser supports geolocation
+        if (navigator.geolocation) {
+            const options = {
+                enableHighAccuracy: true,  // Use GPS for better accuracy
+                timeout: 5000,            // Wait up to 5 seconds
+                maximumAge: 0             // Don’t use cached data
+            };
+
+            // Request the user's current position
+            navigator.geolocation.getCurrentPosition(showPosition, showError, options);
+        } else {
+            document.getElementById('location').innerHTML = "Geolocation is not supported by this browser.";
+        }
+
+        // Handle successful geolocation response
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            // Display the coordinates
+            document.getElementById('location').innerHTML = `Latitude: ${latitude}<br>Longitude: ${longitude}`;
+
+            // Fetch locality using BigDataCloud API (no API key needed)
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+                .then(response => response.json())
+                .then(data => {
+                    // Extract locality (e.g., city or town), fallback to 'Unknown' if not available
+                    const locality = data.locality || 'Unknown';
+                    document.getElementById('location').innerHTML += `<br>Locality: ${locality}`;
+                })
+                .catch(error => {
+                    console.error('Error fetching locality:', error);
+                    document.getElementById('location').innerHTML += `<br>Locality: Unable to fetch`;
+                });
+        }
+
+        // Handle geolocation errors
+        function showError(error) {
+            let message;
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    message = "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    message = "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    message = "An unknown error occurred.";
+                    break;
+            }
+            document.getElementById('location').innerHTML = message;
+        }
+    </script>
+</body>
+</html>
