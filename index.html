@@ -3,11 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Get Current Location and Locality</title>
+  <title>Get Current Location and Search Address</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    window.onload = function() {
+      const originalLog = console.log;
+      console.log = function(...args) {
+        originalLog.apply(console, args);
+        if (window.parent) {
+          window.parent.postMessage(args.join(" "), "*");
+        }
+      };
+
+      const originalErrorLog = console.error;
+      console.error = function(...args) {
+        originalErrorLog.apply(console, args);
+        if (window.parent) {
+          window.parent.postMessage(args.join(" "), "*");
+        }
+      };
+    };
+  </script>
   <style>
-    /* Reset and Base Styles */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -40,6 +58,31 @@
       max-width: 800px;
       margin-bottom: 20px;
     }
+    #controls {
+      margin: 15px 0;
+      text-align: center;
+    }
+    #controls input[type="text"] {
+      width: 70%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    #controls button {
+      padding: 9px 15px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 4px;
+      background: #3498db;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    #controls button:hover {
+      background: #2980b9;
+    }
     #location {
       background: #fff;
       padding: 15px;
@@ -54,7 +97,6 @@
     #location.loading {
       background-color: #eaf4ff;
     }
-    /* Spinner Styles */
     .spinner {
       border: 4px solid #f3f3f3;
       border-top: 4px solid #3498db;
@@ -79,7 +121,6 @@
       margin-bottom: 20px;
       transition: opacity 0.5s ease;
     }
-    /* Skeleton screen for potential future use */
     .skeleton {
       height: 20px;
       background: #ddd;
@@ -93,7 +134,6 @@
       50% { opacity: 0.4; }
       100% { opacity: 1; }
     }
-    /* Micro-interaction for updates */
     .update-animation {
       animation: highlight 1s ease-out;
     }
@@ -105,43 +145,14 @@
       #map, #location {
         width: 95%;
       }
+      #controls input[type="text"] {
+        width: 60%;
+      }
     }
   </style>
   <script>
-    window.onload = function() {
-      // Override console log and error to post messages to parent window if present.
-      var originalLog = console.log;
-      console.log = function() {
-        originalLog.apply(console, arguments);
-        if (window.parent) {
-          window.parent.postMessage(Array.from(arguments).join(" "), "*");
-        }
-      };
-      var originalErrorLog = console.error;
-      console.error = function() {
-        originalErrorLog.apply(console, arguments);
-        if (window.parent) {
-          window.parent.postMessage(Array.from(arguments).join(" "), "*");
-        }
-      };
-
-      // Initial location fetch on page load
-      if (navigator.geolocation) {
-        var options = {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        };
-        navigator.geolocation.getCurrentPosition(showPosition, showError, options);
-      } else {
-        var locationDiv = document.getElementById('location');
-        locationDiv.innerHTML = "Geolocation is not supported by this browser.";
-        locationDiv.classList.remove('loading');
-      }
-    };
-
     var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
-
+    
     // Utility function to add update animation
     function animateUpdate(element) {
       element.classList.add('update-animation');
@@ -165,7 +176,7 @@
           document.getElementById('location').innerHTML += '<br><strong>Locality:</strong> Unable to fetch';
         });
     }
-
+    
     // Function to fetch nearby bus stops using Overpass API
     function fetchBusStops(lat, lon, callback) {
       var query = '[out:json][timeout:25];\n' +
@@ -196,7 +207,7 @@
           }
         });
     }
-
+    
     // Function to initialize the Leaflet map and add markers with smooth transitions
     function initializeMap(lat, lon) {
       if (mapInstance) {
@@ -207,33 +218,32 @@
         attribution: '© OpenStreetMap contributors'
       }).addTo(mapInstance);
       var userMarker = L.marker([lat, lon]).addTo(mapInstance);
-      userMarker.bindPopup('Your location').openPopup();
+      userMarker.bindPopup('Selected location').openPopup();
       if (busStopsData) {
         busStopsData.forEach(function(stop) {
           var marker = L.marker([stop.lat, stop.lon]).addTo(mapInstance);
           var busStopInfo = '';
+          var busStopInfoUrl = "https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=";
           if (stop.tags) {
-            busStopInfo = (stop.tags.ref ? stop.tags.ref : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
+            busStopInfo = (stop.tags.ref ? "<a href='" + busStopInfoUrl + stop.tags.ref + "' target='_blank'>" + stop.tags.ref + "</a>" : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
           }
           busStopInfo = busStopInfo || 'Bus stop';
           marker.bindPopup(busStopInfo);
         });
       }
-      // Fade in the map with micro-interaction
       var mapDiv = document.getElementById('map');
       mapDiv.style.opacity = 0;
       setTimeout(function() {
         mapDiv.style.opacity = 1;
       }, 300);
     }
-
+    
     // Geolocation functions
     function showPosition(position) {
       currentLatitude = position.coords.latitude;
       currentLongitude = position.coords.longitude;
       var locationDiv = document.getElementById('location');
       locationDiv.classList.add('loading');
-      // Display location without spinner
       locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br><strong>Longitude:</strong> ' + currentLongitude;
       fetchLocality(currentLatitude, currentLongitude);
       fetchBusStops(currentLatitude, currentLongitude, function() {
@@ -241,7 +251,7 @@
         locationDiv.classList.remove('loading');
       });
     }
-
+    
     function showError(error) {
       var message;
       switch (error.code) {
@@ -262,6 +272,69 @@
       locationDiv.innerHTML = message;
       locationDiv.classList.remove('loading');
     }
+    
+    // Function to search address using Nominatim API and update map
+    function searchAddress() {
+      var addressInput = document.getElementById('addressInput');
+      var query = addressInput.value.trim();
+      if (!query) return;
+      var locationDiv = document.getElementById('location');
+      locationDiv.classList.add('loading');
+      locationDiv.innerHTML = "Searching for address...";
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query);
+      fetch(url)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (data.length > 0) {
+            var result = data[0];
+            var lat = parseFloat(result.lat);
+            var lon = parseFloat(result.lon);
+            currentLatitude = lat;
+            currentLongitude = lon;
+            locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br><strong>Longitude:</strong> ' + lon;
+            fetchLocality(lat, lon);
+            fetchBusStops(lat, lon, function() {
+              initializeMap(lat, lon);
+              locationDiv.classList.remove('loading');
+            });
+          } else {
+            locationDiv.innerHTML = "Address not found.";
+            locationDiv.classList.remove('loading');
+          }
+        })
+        .catch(function(error) {
+          console.error('Error searching address:', error);
+          locationDiv.innerHTML = "Error searching for address.";
+          locationDiv.classList.remove('loading');
+        });
+    }
+    
+    window.addEventListener('load', function() {
+      if (navigator.geolocation) {
+        var options = {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        };
+        navigator.geolocation.getCurrentPosition(showPosition, showError, options);
+      } else {
+        var locationDiv = document.getElementById('location');
+        locationDiv.innerHTML = "Geolocation is not supported by this browser.";
+        locationDiv.classList.remove('loading');
+      }
+      
+      document.getElementById('searchButton').addEventListener('click', function(e) {
+        e.preventDefault();
+        searchAddress();
+      });
+      
+      document.getElementById('addressInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchAddress();
+        }
+      });
+    });
   </script>
 </head>
 <body>
@@ -269,6 +342,10 @@
     <h1>Discover Your Location</h1>
   </header>
   <main id="display">
+    <div id="controls">
+      <input type="text" id="addressInput" placeholder="Enter an address to search...">
+      <button id="searchButton">Search</button>
+    </div>
     <div id="location" class="loading" aria-live="polite">
       Fetching your location...
       <div class="spinner" id="spinner"></div>
