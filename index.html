@@ -5,8 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Get Current Location and Search Address</title>
 		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js">
-		</script>
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<script>
 			window.onload = function() {
 				const originalLog = console.log;
@@ -169,14 +168,12 @@
 				.then(function(data) {
 					var locality = data.locality || 'Unknown';
 					var locationDiv = document.getElementById('location');
-					locationDiv.innerHTML += '<br>
-					<strong>Locality:</strong> ' + locality;
+					locationDiv.innerHTML += '<br><strong>Locality:</strong> ' + locality;
 					animateUpdate(locationDiv);
 				})
 				.catch(function(error) {
 					console.error('Error fetching locality:', error);
-					document.getElementById('location').innerHTML += '<br>
-					<strong>Locality:</strong> Unable to fetch';
+					document.getElementById('location').innerHTML += '<br><strong>Locality:</strong> Unable to fetch';
 				});
 			}
 			
@@ -247,8 +244,7 @@
 				currentLongitude = position.coords.longitude;
 				var locationDiv = document.getElementById('location');
 				locationDiv.classList.add('loading');
-				locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br>
-				<strong>Longitude:</strong> ' + currentLongitude;
+				locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br><strong>Longitude:</strong> ' + currentLongitude;
 				fetchLocality(currentLatitude, currentLongitude);
 				fetchBusStops(currentLatitude, currentLongitude, function() {
 					initializeMap(currentLatitude, currentLongitude);
@@ -311,8 +307,7 @@
 						var lon = parseFloat(result.lon);
 						currentLatitude = lat;
 						currentLongitude = lon;
-						locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br>
-						<strong>Longitude:</strong> ' + lon;
+						locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br><strong>Longitude:</strong> ' + lon;
 						fetchLocality(lat, lon);
 						fetchBusStops(lat, lon, function() {
 							initializeMap(lat, lon);
@@ -351,32 +346,29 @@
 					e.preventDefault();
 					var locationDiv = document.getElementById('location');
 					locationDiv.classList.add('loading');
-					locationDiv.innerHTML = "Fetching your location...<div class='spinner' id='spinner'>
-				</div>";
-				getCurrentLocation();
+					locationDiv.innerHTML = "Fetching your location...<div class='spinner' id='spinner'></div>";
+					getCurrentLocation();
+				});
 			});
-		});
-	</script>
-</head>
-<body>
-	<header>
-		<h1>Discover Your Location</h1>
-	</header>
-	<main id="display">
-		<div id="controls">
-			<input type="text" id="addressInput" placeholder="Enter an address to search...">
-			<button id="searchButton">Search</button>
-			<div style="margin-top:10px;">
-				<button id="updateLocation">Update Location</button>
+		</script>
+	</head>
+	<body>
+		<header>
+			<h1>Discover Your Location</h1>
+		</header>
+		<main id="display">
+			<div id="controls">
+				<input type="text" id="addressInput" placeholder="Enter an address to search...">
+				<button id="searchButton">Search</button>
+				<div style="margin-top:10px;">
+					<button id="updateLocation">Update Location</button>
+				</div>
 			</div>
-		</div>
-		<div id="location" class="loading" aria-live="polite">
-			Fetching your location...
-			<div class="spinner" id="spinner">
+			<div id="location" class="loading" aria-live="polite">
+				Fetching your location...
+				<div class="spinner" id="spinner"></div>
 			</div>
-		</div>
-		<div id="map" style="opacity:0;">
-		</div>
-	</main>
-</body>
+			<div id="map" style="opacity:0;"></div>
+		</main>
+	</body>
 </html>
