@@ -85,4 +85,13 @@ async function main() {
   console.log(`Wrote ${streets.length} unique roads to ${OUT}`);
 }
 
-main().catch(err => { console.error("Failed:", err.message); process.exit(1); });
+main().catch(err => {
+  console.error("Street refresh failed:", err.message);
+  // Don't break the build over a transient Overpass hiccup: keep the existing
+  // streets.jsonl if we have one; only fail hard when there is nothing to ship.
+  if (fs.existsSync(OUT)) {
+    console.warn(`Keeping existing ${path.basename(OUT)} (not refreshed this run).`);
+    process.exit(0);
+  }
+  process.exit(1);
+});

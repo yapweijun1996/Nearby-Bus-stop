@@ -66,7 +66,7 @@ Requires Node 18+.
 ```bash
 npm install            # one-time
 npm run dev            # dev server with HMR (http://localhost:5173)
-npm run build          # refresh bus-stops.jsonl from DataMall, then build to dist/
+npm run build          # refresh bus-stops.jsonl + streets.jsonl, then build to dist/
 npm run build:pages    # build only, no data refresh (used by CI)
 npm run preview        # serve the production build from dist/
 ```
@@ -105,8 +105,9 @@ npm run streets     # rewrites public/streets.jsonl
 git add public/streets.jsonl && git commit -m "Refresh street index"
 ```
 
-Roads change rarely, so this only needs an occasional refresh. It is not part of
-`npm run build` (to avoid hitting Overpass on every build).
+`npm run build` also refreshes the street index automatically. If the Overpass
+fetch fails (it is a shared, rate-limited service), the build keeps the existing
+`streets.jsonl` instead of breaking — so a transient outage never blocks a build.
 
 ## Deployment (GitHub Pages)
 
