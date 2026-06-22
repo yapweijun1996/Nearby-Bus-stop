@@ -1667,7 +1667,11 @@
 			// Immediate visual feedback
 			renderStops();
 
-			// Debounce API calls
+			// With the local dataset, all stops are already loaded — renderStops()
+			// above re-filters by the new radius, so no API call is needed.
+			if (localStops) return;
+
+			// Debounce API calls (Overpass fallback only)
 			clearTimeout(radiusTimeout);
 			radiusTimeout = setTimeout(() => {
 				if (userPos && !isLoadingBusStops) {
@@ -1745,6 +1749,15 @@
 			const trimmed = query.trim();
 			if (!trimmed) {
 				console.warn('[Search] performSearch invoked with empty query after trimming');
+				return;
+			}
+
+			// "Both" search: try the bundled bus stops first (by code or name); only
+			// fall back to Overpass place geocoding when there is no local match.
+			const localHit = findLocalStop(trimmed);
+			if (localHit) {
+				console.debug('[Search] Local bus-stop match', { query: trimmed });
+				processSearchResult(localHit, { source: 'local', query: trimmed });
 				return;
 			}
 
@@ -2002,13 +2015,18 @@
 				duration: 1.5
 			});
 
-			renderStops();
-
-			// Only fetch bus stops if not already loading
-			if (!isLoadingBusStops) {
-				fetchBusStops(pos.lat, pos.lon, +radInput.value, function() {
-					renderStops();
-				});
+			// Prefer the bundled local dataset (instant, offline). Fall back to the
+			// Overpass API only when bus-stops.jsonl is not available.
+			if (localStops) {
+				busStopsData = localStops;
+				renderStops();
+			} else {
+				renderStops();
+				if (!isLoadingBusStops) {
+					fetchBusStops(pos.lat, pos.lon, +radInput.value, function() {
+						renderStops();
+					});
+				}
 			}
 		}
 
@@ -2023,6 +2041,57 @@
 				// Otherwise try to get user location or use default
 				locateMe();
 			}
+		}
+
+		// --- Local bus-stop dataset (bus-stops.jsonl) ---------------------------------
+		// When present, every bus stop is held locally so "nearby" needs no API:
+		// instant, offline, and every stop has a valid LTA code. Falls back to Overpass
+		// automatically when the file is missing.
+		let localStops = null; // array of element-shaped { id, lat, lon, tags:{ ref, name, road } }
+
+		function loadLocalStops() {
+			return fetch('./bus-stops.jsonl')
+				.then(r => r.ok ? r.text() : Promise.reject(new Error('bus-stops.jsonl not found')))
+				.then(text => {
+					const arr = [];
+					for (const line of text.split('\n')) {
+						const trimmed = line.trim();
+						if (!trimmed) continue;
+						try {
+							const o = JSON.parse(trimmed);
+							if (o && typeof o.lat === 'number' && typeof o.lon === 'number' && o.code) {
+								arr.push({ id: o.code, lat: o.lat, lon: o.lon, tags: { ref: String(o.code), name: o.name || 'Bus Stop', road: o.road || '' } });
+							}
+						} catch (e) { /* skip malformed line */ }
+					}
+					if (arr.length) {
+						localStops = arr;
+						console.debug('[Local] Loaded', arr.length, 'bus stops from bus-stops.jsonl');
+						// If the user is already located, switch to local data immediately
+						if (userPos) {
+							busStopsData = localStops;
+							renderStops();
+						}
+					}
+				})
+				.catch(() => {
+					console.debug('[Local] bus-stops.jsonl unavailable; falling back to Overpass API');
+				});
+		}
+
+		// Find a bundled bus stop by exact code, or by name/road substring
+		function findLocalStop(query) {
+			if (!localStops) return null;
+			const q = query.trim().toLowerCase();
+			if (!q) return null;
+			let hit = localStops.find(s => s.tags.ref.toLowerCase() === q);
+			if (!hit) {
+				hit = localStops.find(s =>
+					(s.tags.name || '').toLowerCase().includes(q) ||
+					(s.tags.road || '').toLowerCase().includes(q)
+				);
+			}
+			return hit ? { lat: hit.lat, lon: hit.lon, name: hit.tags.name } : null;
 		}
 
 		// Escape text from OpenStreetMap (user-editable) before putting it in innerHTML
@@ -2244,6 +2313,7 @@
 			return counter;
 		}
 
+		loadLocalStops(); // load bundled dataset in parallel; falls back to Overpass if absent
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility

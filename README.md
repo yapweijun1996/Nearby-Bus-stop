@@ -46,6 +46,35 @@ Last reviewed: **2026-06-22**
 - **Performance**: Multi-layer caching system (memory cache + localStorage) with intelligent cache management
 - **APIs**: Modern Fetch API with comprehensive error handling and timeout management
 
+## Local Bus Stop Dataset (optional, recommended)
+
+The app can run **fully offline for nearby lookups** by bundling the complete list
+of Singapore bus stops as a static `bus-stops.jsonl` file (one JSON object per line):
+
+```jsonl
+{"code":"07379","name":"Aperia/Before Kallang Road","road":"Kallang Road","lat":1.2821,"lon":103.8591}
+```
+
+Behaviour is automatic:
+
+- **If `bus-stops.jsonl` is present**, "nearby" is computed locally (instant, no API,
+  works offline, every stop has a valid LTA code), and the search box matches local
+  stops by code or name first.
+- **If it is absent**, the app falls back to the live Overpass API (no change).
+
+### Generating the file from LTA DataMall
+
+1. Get a free AccountKey from [LTA DataMall](https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html).
+2. Run the generator (fetches all stops, pages of 500, and writes `bus-stops.jsonl`):
+
+   ```bash
+   node scripts/build-stops.cjs <YOUR_ACCOUNT_KEY>
+   # or: LTA_ACCOUNT_KEY=xxxx node scripts/build-stops.cjs
+   ```
+
+3. Commit `bus-stops.jsonl` so GitHub Pages serves it. Re-run occasionally to refresh
+   (the SG bus-stop list changes rarely). Data is under the Singapore Open Data Licence.
+
 ## Data Source
 
 Bus stop data is dynamically fetched in real-time using the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), which queries OpenStreetMap data for Singapore including:
