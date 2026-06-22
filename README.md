@@ -24,6 +24,7 @@ https://yapweijun1996.github.io/Nearby-Bus-Stop-v2/
 -   **Accessibility**: Full keyboard navigation support, ARIA labels, screen reader compatibility, and high contrast mode support.
 -   **Error Handling**: Comprehensive error handling with user-friendly messages and graceful fallbacks.
 -   **Loading States**: Professional loading indicators with progress feedback and smooth transitions.
+-   **Progressive Web App**: Installable on iOS, iPadOS, Android, and desktop with app manifest, local icons, service worker caching, and an offline fallback page.
 
 ## Codebase Review Notes
 
@@ -33,6 +34,7 @@ Last reviewed: **2026-06-22**
 - The control handlers are currently assigned multiple times for some buttons (for example `#toggleBtn` and `#fullscreenBtn`) during initialization. The later binding replaces the earlier one. This works today, but it is fragile and should be consolidated into one binding each.
 - The README originally linked to the Nominatim usage policy while the project queries Overpass API data. The correct policy page should be for Overpass usage.
 - For reliable geolocation on modern browsers, the app should be served over HTTPS or `localhost`; direct file access may block location permission in some environments.
+- The app now includes baseline PWA files (`manifest.webmanifest`, `service-worker.js`, `offline.html`, and local icons) so GitHub Pages can serve it as an installable web app.
 
 ## Technologies
 
@@ -220,6 +222,15 @@ This repository now includes [GitHub Actions](.github/workflows/deploy-pages.yml
 3. GitHub Actions publishes `index.html` and repository files automatically.
 4. Access the deployed site from your repository's Pages URL.
 
+### PWA Installation
+
+The app is configured as a Progressive Web App.
+
+- **iPhone/iPad**: Open the GitHub Pages URL in Safari, tap Share, then choose **Add to Home Screen**.
+- **Android**: Open the site in Chrome, then choose **Install app** or **Add to Home screen**.
+- **Desktop**: Open the site in Chrome, Edge, or another PWA-capable browser, then use the install button in the address bar.
+- **Offline behavior**: The app shell can reopen after installation, but live maps, location search, and bus stop data still require network access.
+
 ### URL Parameters
 
 You can share specific locations by appending coordinates to the URL:
@@ -237,7 +248,7 @@ Location data is processed locally in your browser and is not stored or transmit
 
 ## Business Use
 
-This application is suitable for personal and non-commercial use. For business or high-traffic applications, please be aware that it relies on the free [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) for real-time bus stop data, which has a [usage policy](https://operations.osmfoundation.org/policies/nominatim/) that should be respected. The application implements intelligent caching and request optimization to minimize API load.
+This application is suitable for personal and non-commercial use. For business or high-traffic applications, please be aware that it relies on the free [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) for real-time bus stop data, which has a [usage policy](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_API_usage_policy) that should be respected. The application implements intelligent caching and request optimization to minimize API load.
 
 For high-volume commercial deployments, consider:
 - Implementing your own OpenStreetMap data processing pipeline

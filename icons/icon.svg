@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SG Nearby Bus Stops">
+  <rect width="512" height="512" rx="112" fill="#4f46e5"/>
+  <path fill="#10b981" d="M116 329c0-83 67-150 150-150s150 67 150 150v37H116v-37Z"/>
+  <path fill="#fff" d="M142 172c0-37 30-67 67-67h94c37 0 67 30 67 67v157c0 20-16 36-36 36h-13v28c0 11-9 20-20 20s-20-9-20-20v-28H211v28c0 11-9 20-20 20s-20-9-20-20v-28h-13c-20 0-36-16-36-36V172Z"/>
+  <path fill="#dbeafe" d="M168 166c0-12 10-22 22-22h132c12 0 22 10 22 22v71H168v-71Z"/>
+  <path fill="#1e293b" d="M189 297a24 24 0 1 0 0-48 24 24 0 0 0 0 48Zm134 0a24 24 0 1 0 0-48 24 24 0 0 0 0 48Z"/>
+  <path fill="#4f46e5" d="M203 114h106v28H203z"/>
+</svg>

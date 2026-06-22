@@ -3,8 +3,23 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover" />
 	<title>SG Nearby Bus Stops</title>
+	<meta name="description" content="Find nearby Singapore bus stops on an interactive map with location search, radius filtering, and arrival-time links." />
+	<meta name="theme-color" content="#4f46e5" />
+	<meta name="color-scheme" content="light" />
+	<meta name="application-name" content="SG Nearby Bus Stops" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+	<meta name="apple-mobile-web-app-title" content="SG Bus Stops" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="msapplication-TileColor" content="#4f46e5" />
+
+	<link rel="manifest" href="./manifest.webmanifest" />
+	<link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+	<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+	<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+	<link rel="mask-icon" href="./icons/icon.svg" color="#4f46e5" />
 
 	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" crossorigin="" />
 	<style>
@@ -1859,6 +1874,14 @@
 			}
 		`;
 		document.head.appendChild(style);
+
+		if ('serviceWorker' in navigator) {
+			window.addEventListener('load', () => {
+				navigator.serviceWorker.register('./service-worker.js').catch(error => {
+					console.warn('[PWA] Service worker registration failed', error);
+				});
+			});
+		}
 	</script>
 </body>
 
