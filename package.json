@@ -10,7 +10,8 @@
     "streets": "node scripts/build-streets.cjs",
     "malls": "node scripts/build-malls.cjs",
     "mrt": "node scripts/build-mrt.cjs",
-    "build": "npm run data && npm run streets && npm run malls && npm run mrt && vite build",
+    "places": "node scripts/build-places.cjs",
+    "build": "npm run data && npm run streets && npm run malls && npm run mrt && npm run places && vite build",
     "build:pages": "vite build",
     "preview": "vite preview"
   },

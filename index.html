@@ -2215,6 +2215,35 @@
 				});
 		}
 
+		// --- Local landmark index (places.jsonl) -------------------------------------
+		// SG schools, hospitals, parks and tourist attractions, for offline search.
+		let localPlaces = null; // array of { name, _n (lowercased), lat, lon }
+
+		function loadLocalPlaces() {
+			return fetch('./places.jsonl')
+				.then(r => r.ok ? r.text() : Promise.reject(new Error('places.jsonl not found')))
+				.then(text => {
+					const arr = [];
+					for (const line of text.split('\n')) {
+						const trimmed = line.trim();
+						if (!trimmed) continue;
+						try {
+							const o = JSON.parse(trimmed);
+							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon });
+							}
+						} catch (e) { /* skip */ }
+					}
+					if (arr.length) {
+						localPlaces = arr;
+						console.debug('[Local] Loaded', arr.length, 'landmarks from places.jsonl');
+					}
+				})
+				.catch(() => {
+					console.debug('[Local] places.jsonl unavailable');
+				});
+		}
+
 		// Match a {name,_n} list by exact, then starts-with, then contains
 		function matchNamed(list, q) {
 			if (!list) return null;
@@ -2249,11 +2278,15 @@
 			const mall = matchNamed(localMalls, q);
 			if (mall) return mall;
 
-			// 4. Road name
+			// 4. Landmark (school / hospital / park / tourist attraction)
+			const place = matchNamed(localPlaces, q);
+			if (place) return place;
+
+			// 5. Road name
 			const street = matchNamed(localStreets, q);
 			if (street) return street;
 
-			// 5. Bus-stop name / road substring
+			// 6. Bus-stop name / road substring
 			if (localStops) {
 				const byName = localStops.find(s =>
 					(s.tags.name || '').toLowerCase().includes(q) ||
@@ -2488,6 +2521,7 @@
 		loadLocalStreets(); // bundled street index for offline place search
 		loadLocalMalls(); // bundled shopping-mall index for offline search
 		loadLocalMrt(); // bundled MRT/LRT station index for offline search
+		loadLocalPlaces(); // bundled landmark index (schools/hospitals/parks/attractions)
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility

@@ -34,6 +34,7 @@ copy of the LTA bus-stop list.
 | Street search (offline) | Bundled `public/streets.jsonl` — all named SG roads, generated from OpenStreetMap |
 | Mall search (offline) | Bundled `public/malls.jsonl` — SG shopping malls, generated from OpenStreetMap |
 | MRT/LRT search (offline) | Bundled `public/mrt.jsonl` — SG rail stations (by name or code), from OpenStreetMap |
+| Landmark search (offline) | Bundled `public/places.jsonl` — SG schools, hospitals, parks, attractions, from OpenStreetMap |
 | Place search (fallback) | Overpass API geocoding |
 | Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) |
 | Map library | [Leaflet](https://leafletjs.com/) 1.9.4 (pinned, with SRI) |
@@ -68,7 +69,7 @@ Requires Node 18+.
 ```bash
 npm install            # one-time
 npm run dev            # dev server with HMR (http://localhost:5173)
-npm run build          # refresh bus-stops + streets + malls + mrt jsonl, then build to dist/
+npm run build          # refresh all datasets (stops/streets/malls/mrt/places), then build to dist/
 npm run build:pages    # build only, no data refresh (used by CI)
 npm run preview        # serve the production build from dist/
 ```

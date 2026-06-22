@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sg-nearby-bus-stops-v6';
+const CACHE_VERSION = 'sg-nearby-bus-stops-v7';
 const APP_SHELL = [
   './',
   './index.html',
@@ -54,7 +54,7 @@ self.addEventListener('fetch', event => {
   // Bundled datasets: network-first so refreshed data is picked up, with the
   // cached copy as an offline fallback.
   const dataPath = new URL(request.url).pathname;
-  if (dataPath.endsWith('/bus-stops.jsonl') || dataPath.endsWith('/streets.jsonl') || dataPath.endsWith('/malls.jsonl') || dataPath.endsWith('/mrt.jsonl')) {
+  if (dataPath.endsWith('/bus-stops.jsonl') || dataPath.endsWith('/streets.jsonl') || dataPath.endsWith('/malls.jsonl') || dataPath.endsWith('/mrt.jsonl') || dataPath.endsWith('/places.jsonl')) {
     event.respondWith(
       fetch(request)
         .then(response => {
