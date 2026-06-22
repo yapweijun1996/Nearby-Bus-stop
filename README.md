@@ -31,7 +31,8 @@ copy of the LTA bus-stop list.
 | --- | --- |
 | Nearby bus stops (primary) | Bundled `public/bus-stops.jsonl`, generated from [LTA DataMall](https://datamall.lta.gov.sg/) |
 | Nearby bus stops (fallback) | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) (`highway=bus_stop`, `public_transport=platform`) |
-| Place search / geocoding | Overpass API |
+| Street search (offline) | Bundled `public/streets.jsonl` — all named SG roads, generated from OpenStreetMap |
+| Place search (fallback) | Overpass API geocoding |
 | Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) |
 | Map library | [Leaflet](https://leafletjs.com/) 1.9.4 (pinned, with SRI) |
 
@@ -92,6 +93,20 @@ or sent to the browser.
    ```
 
 Data is provided under the Singapore Open Data Licence.
+
+### Refreshing the street index
+
+`public/streets.jsonl` holds every named Singapore road (~8.4k) with a representative
+coordinate, used for offline street search. It is generated from OpenStreetMap (via
+Overpass, fetched once at build time — no key, no runtime API):
+
+```bash
+npm run streets     # rewrites public/streets.jsonl
+git add public/streets.jsonl && git commit -m "Refresh street index"
+```
+
+Roads change rarely, so this only needs an occasional refresh. It is not part of
+`npm run build` (to avoid hitting Overpass on every build).
 
 ## Deployment (GitHub Pages)
 

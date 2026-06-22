@@ -1754,9 +1754,9 @@
 
 			// "Both" search: try the bundled bus stops first (by code or name); only
 			// fall back to Overpass place geocoding when there is no local match.
-			const localHit = findLocalStop(trimmed);
+			const localHit = findLocalMatch(trimmed);
 			if (localHit) {
-				console.debug('[Search] Local bus-stop match', { query: trimmed });
+				console.debug('[Search] Local match (stop/street)', { query: trimmed });
 				processSearchResult(localHit, { source: 'local', query: trimmed });
 				return;
 			}
@@ -2079,19 +2079,65 @@
 				});
 		}
 
-		// Find a bundled bus stop by exact code, or by name/road substring
-		function findLocalStop(query) {
-			if (!localStops) return null;
+		// --- Local street index (streets.jsonl) --------------------------------------
+		// All named SG roads with a representative coordinate, for offline street search.
+		let localStreets = null; // array of { name, _n (lowercased), lat, lon }
+
+		function loadLocalStreets() {
+			return fetch('./streets.jsonl')
+				.then(r => r.ok ? r.text() : Promise.reject(new Error('streets.jsonl not found')))
+				.then(text => {
+					const arr = [];
+					for (const line of text.split('\n')) {
+						const trimmed = line.trim();
+						if (!trimmed) continue;
+						try {
+							const o = JSON.parse(trimmed);
+							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon });
+							}
+						} catch (e) { /* skip */ }
+					}
+					if (arr.length) {
+						localStreets = arr;
+						console.debug('[Local] Loaded', arr.length, 'streets from streets.jsonl');
+					}
+				})
+				.catch(() => {
+					console.debug('[Local] streets.jsonl unavailable');
+				});
+		}
+
+		// Local "Both" search: exact bus-stop code, then a road name, then a bus-stop
+		// name/road substring. Returns { lat, lon, name } or null (then Overpass runs).
+		function findLocalMatch(query) {
 			const q = query.trim().toLowerCase();
 			if (!q) return null;
-			let hit = localStops.find(s => s.tags.ref.toLowerCase() === q);
-			if (!hit) {
-				hit = localStops.find(s =>
+
+			// 1. Exact bus-stop code (e.g. "07379")
+			if (localStops) {
+				const byCode = localStops.find(s => s.tags.ref.toLowerCase() === q);
+				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.tags.name };
+			}
+
+			// 2. Road name: exact, then starts-with, then contains
+			if (localStreets) {
+				const st = localStreets.find(s => s._n === q)
+					|| localStreets.find(s => s._n.startsWith(q))
+					|| localStreets.find(s => s._n.includes(q));
+				if (st) return { lat: st.lat, lon: st.lon, name: st.name };
+			}
+
+			// 3. Bus-stop name / road substring
+			if (localStops) {
+				const byName = localStops.find(s =>
 					(s.tags.name || '').toLowerCase().includes(q) ||
 					(s.tags.road || '').toLowerCase().includes(q)
 				);
+				if (byName) return { lat: byName.lat, lon: byName.lon, name: byName.tags.name };
 			}
-			return hit ? { lat: hit.lat, lon: hit.lon, name: hit.tags.name } : null;
+
+			return null;
 		}
 
 		// Escape text from OpenStreetMap (user-editable) before putting it in innerHTML
@@ -2313,7 +2359,8 @@
 			return counter;
 		}
 
-		loadLocalStops(); // load bundled dataset in parallel; falls back to Overpass if absent
+		loadLocalStops(); // bundled bus stops; falls back to Overpass if absent
+		loadLocalStreets(); // bundled street index for offline place search
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility
