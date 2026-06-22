@@ -287,7 +287,7 @@
 		}
 
 		.controls-row button {
-			width: 100%;
+			width: auto;
 			padding: 12px 14px;
 			border: none;
 			border-radius: var(--radius);
@@ -303,6 +303,10 @@
 			gap: 6px;
 			min-height: 48px;
 			white-space: nowrap;
+		}
+
+		.action-row button {
+			width: 100%;
 		}
 
 		.btn-primary {
@@ -590,9 +594,9 @@
 				left: 0;
 				right: 0;
 				bottom: 0;
-				max-height: 70vh;
-				padding: 16px;
-				gap: 12px;
+				max-height: 64vh;
+				padding: 12px;
+				gap: 10px;
 				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 				z-index: 1000;
 				overflow-y: auto;
@@ -610,42 +614,77 @@
 				align-items: stretch;
 			}
 
-			.controls-row>.search-combobox {
-				flex: 1;
+			.search-row {
+				order: 1;
+			}
+
+			.search-row .search-combobox {
+				flex: 1 1 auto;
 				min-width: 0;
 			}
 
-			.controls-row>.search-combobox>input[type="text"] {
-				flex: 1;
+			.search-row .search-combobox>input[type="text"] {
 				min-height: 48px;
-				padding: 12px 16px;
+				padding: 12px 14px;
 				font-size: 16px; /* Prevent zoom on iOS */
 				border-radius: var(--radius);
 			}
 
-			.combo-list {
-				max-height: 34vh;
+			.search-row button {
+				flex: 0 0 52px;
+				width: 52px;
+				min-width: 52px;
+				padding: 0;
 			}
 
-			.controls-row>button {
-				flex-shrink: 0;
-				min-height: 48px;
-				padding: 12px 16px;
-				font-size: 0.875rem;
-				min-width: 48px;
+			.search-row button > span {
+				display: none;
+			}
+
+			.combo-list {
+				top: auto;
+				bottom: calc(100% + 6px);
+				max-height: min(260px, 36vh);
+			}
+
+			.action-row {
+				order: 2;
+				display: grid;
+				grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+				gap: 8px;
+			}
+
+			.action-row button {
+				min-width: 0;
+				min-height: 44px;
+				padding: 10px 8px;
+				font-size: 0.8125rem;
 				border-radius: var(--radius);
 			}
 
+			.stop-list {
+				order: 3;
+				max-height: clamp(96px, 24vh, 220px);
+				gap: 7px;
+				padding: 0 1px;
+			}
+
+			.radius-row {
+				order: 4;
+				grid-template-columns: 88px minmax(0, 1fr);
+				padding: 9px 10px;
+				gap: 8px;
+			}
+
 			.controls-row label {
-				font-size: 0.875rem;
-				margin-bottom: 8px;
-				display: block;
+				font-size: 0.8125rem;
+				margin-bottom: 0;
 			}
 
 			.sheet-handle {
 				width: 36px;
 				height: 4px;
-				margin: 0 auto 8px auto;
+				margin: 0 auto 2px auto;
 			}
 
 			#showBtn {
@@ -769,8 +808,8 @@
 				left: 0;
 				right: 0;
 				bottom: 0;
-				max-height: 90%;
-				padding: 12px;
+				max-height: 72vh;
+				padding: 10px;
 				gap: 8px;
 				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 				z-index: 1000;
@@ -781,40 +820,61 @@
 				transform: translateY(calc(100% + 32px));
 			}
 
-			.controls-row {}
-
-			.controls-row:last-child {
-				flex-direction: row;
-				flex-wrap: wrap;
-				justify-content: space-between;
+			.search-row {
+				gap: 6px;
 			}
 
-			.controls-row:last-child button {
-				flex: 1 1 auto;
-				min-width: 70px;
-				margin: 2px;
+			.search-row button {
+				flex-basis: 44px;
+				width: 44px;
+				min-width: 44px;
 			}
 
-			.controls-row label {
-				font-size: 0.8125rem;
-				margin-bottom: 4px;
+			.action-row {
+				gap: 6px;
+				grid-template-columns: minmax(0, 1.5fr) 44px 44px;
+			}
+
+			.action-row button {
+				min-height: 40px;
+				padding: 8px 6px;
+				font-size: 0;
+				gap: 0;
+			}
+
+			#locateBtn {
+				font-size: 0.75rem;
+				gap: 4px;
+			}
+
+			.action-row button > span {
+				display: none;
+			}
+
+			#locateBtn > span {
+				display: inline;
 			}
 
 			.controls-row input[type="text"] {
-				padding: 10px 14px;
-				font-size: 0.8125rem;
-			}
-
-			.controls-row button {
-				padding: 6px 10px;
-				font-size: 0.75rem;
-				min-height: 36px;
-				gap: 4px;
+				padding: 10px 12px;
 			}
 
 			.controls-row button svg {
 				width: 16px;
 				height: 16px;
+			}
+
+			.radius-row {
+				grid-template-columns: 78px minmax(0, 1fr);
+				padding: 8px;
+			}
+
+			.radius-label {
+				font-size: 0.75rem;
+			}
+
+			.stop-list {
+				max-height: clamp(80px, 22vh, 170px);
 			}
 
 			.sheet-handle {
