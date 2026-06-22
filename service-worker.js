@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sg-nearby-bus-stops-v1';
+const CACHE_VERSION = 'sg-nearby-bus-stops-v2';
 const APP_SHELL = [
   './',
   './index.html',

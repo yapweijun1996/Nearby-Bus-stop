@@ -4,11 +4,11 @@ A modern web application that displays nearby bus stops in Singapore on an inter
 
 ## Demo
 
-https://yapweijun1996.github.io/Nearby-Bus-Stop-v2/
+https://yapweijun1996.github.io/Nearby-Bus-stop/
 
 ## Preview
 
-<img width="1437" height="794" alt="Preview" src="og_img.jpg" />
+<img width="512" height="512" alt="App icon" src="icons/icon-512.png" />
 
 ## Features
 
@@ -30,11 +30,13 @@ https://yapweijun1996.github.io/Nearby-Bus-Stop-v2/
 
 Last reviewed: **2026-06-22**
 
-- The main application is currently implemented entirely in `index.html` (HTML/CSS + JS), with no build tooling required.
-- The control handlers are currently assigned multiple times for some buttons (for example `#toggleBtn` and `#fullscreenBtn`) during initialization. The later binding replaces the earlier one. This works today, but it is fragile and should be consolidated into one binding each.
-- The README originally linked to the Nominatim usage policy while the project queries Overpass API data. The correct policy page should be for Overpass usage.
+- The main application is implemented entirely in `index.html` (HTML/CSS + JS), with no build tooling required. Splitting the CSS and JS into separate files is the next maintainability step.
+- Duplicate `#toggleBtn` / `#fullscreenBtn` click handlers and the dead retry-wrapper functions have been consolidated; each control is now bound once.
+- Text from OpenStreetMap (`name`, `ref`) is escaped before insertion into the DOM to prevent HTML/script injection.
+- Leaflet is pinned to `1.9.4` (with Subresource Integrity) instead of an unpinned `latest` URL, so an upstream release cannot break the app.
+- The "View Times" arrival link is shown only when a stop has a valid 5-digit LTA code, avoiding dead links for OSM nodes without a `ref`.
 - For reliable geolocation on modern browsers, the app should be served over HTTPS or `localhost`; direct file access may block location permission in some environments.
-- The app now includes baseline PWA files (`manifest.webmanifest`, `service-worker.js`, `offline.html`, and local icons) so GitHub Pages can serve it as an installable web app.
+- The app includes baseline PWA files (`manifest.webmanifest`, `service-worker.js`, `offline.html`, and local icons) so GitHub Pages can serve it as an installable web app.
 
 ## Technologies
 
@@ -235,7 +237,7 @@ The app is configured as a Progressive Web App.
 
 You can share specific locations by appending coordinates to the URL:
 ```
-https://yapweijun1996.github.io/Nearby-Bus-Stop-v2/?lat=1.283&lon=103.860
+https://yapweijun1996.github.io/Nearby-Bus-stop/?lat=1.283&lon=103.860
 ```
 
 ## Privacy & Permissions

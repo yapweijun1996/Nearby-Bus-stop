@@ -7,6 +7,17 @@
 	<title>SG Nearby Bus Stops</title>
 	<meta name="description" content="Find nearby Singapore bus stops on an interactive map with location search, radius filtering, and arrival-time links." />
 	<meta name="theme-color" content="#4f46e5" />
+
+	<!-- Open Graph / Twitter share cards -->
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="SG Nearby Bus Stops" />
+	<meta property="og:description" content="Find nearby Singapore bus stops on an interactive map with location search, radius filtering, and arrival-time links." />
+	<meta property="og:url" content="https://yapweijun1996.github.io/Nearby-Bus-stop/" />
+	<meta property="og:image" content="https://yapweijun1996.github.io/Nearby-Bus-stop/icons/icon-512.png" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="SG Nearby Bus Stops" />
+	<meta name="twitter:description" content="Find nearby Singapore bus stops on an interactive map with location search, radius filtering, and arrival-time links." />
+	<meta name="twitter:image" content="https://yapweijun1996.github.io/Nearby-Bus-stop/icons/icon-512.png" />
 	<meta name="color-scheme" content="light" />
 	<meta name="application-name" content="SG Nearby Bus Stops" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
@@ -21,7 +32,8 @@
 	<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
 	<link rel="mask-icon" href="./icons/icon.svg" color="#4f46e5" />
 
-	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" crossorigin="" />
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+		integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 	<style>
 		:root {
 			--primary: #4f46e5;
@@ -1133,7 +1145,8 @@
 
 	<div id="map"></div>
 
-	<script src="https://unpkg.com/leaflet/dist/leaflet.js" crossorigin=""></script>
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+		integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 	<script>
 		const DEFAULT = { lat: 1.283, lon: 103.860 };
 		const map = L.map('map', {
@@ -1183,7 +1196,7 @@
 		const API_RATE_LIMIT = 1000; // Minimum 1 second between API calls
 
 		function escapeQueryForRegex(query) {
-			return query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\$&');
+			return query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 		}
 
 		function buildOverpassSearchQuery(query) {
@@ -1358,7 +1371,7 @@
 				}
 			})
 			.catch(function(error) {
-				console.error('API 请求失败:', error);
+				console.error('API request failed:', error);
 				retryCount++;
 
 				if (retryCount < MAX_RETRIES) {
@@ -1377,20 +1390,20 @@
 		}
 
 		function handleApiFailure(error, lat, lon, radius, callback) {
-			console.warn('所有重试尝试均失败，使用备用方案:', error);
+			console.warn('All retries failed; falling back to cache if available:', error);
 
-			// 显示重试按钮
+			// Show the retry button
 			const retryBtn = document.getElementById('retryBtn');
 			if (retryBtn) {
 				retryBtn.style.display = 'flex';
 			}
 
-			// 尝试使用缓存数据作为fallback
+			// Try cached data as a fallback
 			const cacheKey = `${lat},${lon},${radius}`;
 			const cached = busStopsCache.get(cacheKey);
 
 			if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION * 2) {
-				console.debug('使用缓存数据作为fallback');
+				console.debug('Using cached data as fallback');
 				showMessage('Using cached data to display bus stops (API temporarily unavailable)', 'warning');
 				busStopsData = cached.data;
 				if (typeof callback === "function") {
@@ -1399,7 +1412,7 @@
 				return;
 			}
 
-			// 如果没有缓存，显示友好错误信息
+			// No cache available: show a friendly error
 			showMessage('Bus stop data is temporarily unavailable. Please try again later or check your network connection.', 'error');
 
 			if (typeof callback === "function") {
@@ -1571,7 +1584,7 @@
 			showMessage('Network error. Please check your connection and try again.', 'error');
 		}
 
-		// 离线检测和恢复机制
+		// Offline detection and recovery
 		function isOnline() {
 			return navigator.onLine;
 		}
@@ -1597,7 +1610,7 @@
 			showOfflineMessage();
 		});
 
-		// 存储最后的操作状态用于重试
+		// Stores the last operation so the Retry button can re-run it
 		let lastOperation = {
 			type: null, // 'location' or 'busStops'
 			params: null
@@ -1619,23 +1632,7 @@
 			retryBtn.style.display = 'none';
 		}
 
-		// 修改locateMe函数以支持重试状态跟踪
-		const originalLocateMe = locateMe; /* tracked-below */
-		function locateMe() {
-			lastOperation = { type: 'location', params: null };
-			document.getElementById('retryBtn').style.display = 'none';
-			originalLocateMe();
-		}
-
-		// 修改setUser函数以支持重试状态跟踪
-		const originalSetUser = setUser;
-		function setUser(pos) {
-			lastOperation = {
-				type: 'busStops',
-				params: { lat: pos.lat, lon: pos.lon, radius: parseInt(document.getElementById('radius').value) }
-			};
-			originalSetUser(pos);
-		}
+		// (Retry-state tracking now lives inside the real locateMe() and setUser().)
 
 		const ctrls = document.getElementById('controls');
 		const showBtn = document.getElementById('showBtn');
@@ -1676,17 +1673,7 @@
 			}
 		}
 		searchToggleBtn.onclick = () => setWatchSearch(!ctrls.classList.contains('searching'));
-		document.getElementById('toggleBtn').onclick = () => {
-			ctrls.classList.toggle('hidden');
-			showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
-			map.invalidateSize();
-		};
 		showBtn.onclick = () => document.getElementById('toggleBtn').click();
-		document.getElementById('fullscreenBtn').onclick = () => {
-			document.fullscreenElement
-				? document.exitFullscreen()
-				: document.documentElement.requestFullscreen();
-		};
 
 		function locateMe() {
 			lastOperation = { type: 'location', params: null };
@@ -1748,7 +1735,7 @@
 			const cacheKey = `search_${trimmed.toLowerCase()}`;
 			let cachedEntry = null;
 
-			// 尝试读取缓存
+			// Try to read the cache
 			try {
 				const cached = localStorage.getItem(cacheKey);
 				if (cached) {
@@ -1758,7 +1745,7 @@
 				console.warn('[Search] Failed to read cache', { query: trimmed, error });
 			}
 
-			// 检查缓存是否有效
+			// Check whether the cache is still valid
 			if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_DURATION) {
 				hideLoadingState();
 				console.debug('[Search] Cache hit', {
@@ -1782,7 +1769,7 @@
 				});
 			}
 
-			// 执行搜索请求（带重试机制）
+			// Run the search request (with retry)
 			executeSearchWithRetry(trimmed, cacheKey, cachedEntry);
 		}
 
@@ -1808,12 +1795,12 @@
 				.then(data => {
 					hideLoadingState();
 
-					// 处理Overpass API的busy状态
+					// Handle the Overpass API busy state
 					if (data.remark && data.remark.includes('busy')) {
 						console.warn('[Search] Overpass busy', { query: query, remark: data.remark });
 						showMessage('Search service is busy. Please try again in a moment.', 'warning');
 
-						// 如果有缓存，回退到缓存结果
+						// If a cache exists, fall back to the cached result
 						if (cachedEntry) {
 							setTimeout(() => {
 								processSearchResult(cachedEntry.data, {
@@ -1851,7 +1838,7 @@
 
 					const { location, matches } = normalized;
 
-					// 缓存搜索结果
+					// Cache the search result
 					try {
 						localStorage.setItem(cacheKey, JSON.stringify({
 							data: location,
@@ -1884,7 +1871,7 @@
 						error
 					});
 
-					// 如果有缓存，回退到缓存结果
+					// If a cache exists, fall back to the cached result
 					if (cachedEntry) {
 						hideLoadingState();
 						console.debug('[Search] Fallback to expired cache', {
@@ -1901,7 +1888,7 @@
 						return;
 					}
 
-					// 没有缓存时的错误处理
+					// Error handling when there is no cache
 					hideLoadingState();
 					handleSearchError();
 				});
@@ -1931,7 +1918,7 @@
 				lon
 			});
 			setUser({ lat, lon });
-			showMessage(`Located: ${displayName}`, 'success');
+			showMessage(`Located: ${escapeHtml(displayName)}`, 'success');
 			// Collapse the watch search field once a result is applied
 			ctrls.classList.remove('searching');
 		}
@@ -2019,13 +2006,26 @@
 			}
 		}
 
+		// Escape text from OpenStreetMap (user-editable) before putting it in innerHTML
+		function escapeHtml(value) {
+			return String(value ?? '').replace(/[&<>"']/g, ch => ({
+				'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+			}[ch]));
+		}
+
 		// Format a distance in metres into a friendly string (e.g. 850m / 1.2km)
 		function formatDistance(metres) {
 			return metres >= 1000 ? (metres / 1000).toFixed(1) + 'km' : Math.round(metres) + 'm';
 		}
 
+		// The LTA bus-stop code (a 5-digit ref). Returns null when OSM has no usable code.
 		function stopCode(s) {
-			return s.tags?.ref || s.tags?.['ref:LTA'] || s.id;
+			return s.tags?.ref || s.tags?.['ref:LTA'] || null;
+		}
+
+		// The arrival-times service is keyed by the 5-digit LTA code only
+		function isValidBusCode(code) {
+			return /^\d{5}$/.test(code);
 		}
 
 		function arrivalUrl(code) {
@@ -2077,96 +2077,92 @@
 			listEl.innerHTML = '';
 
 			nearbyStops.forEach((s, index) => {
-				const distance = map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]);
-				const code = stopCode(s);
-				const name = s.tags?.name || 'Bus Stop';
-				const key = s.tags?.ref ? 'ref:' + s.tags.ref : 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+			const distance = map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]);
+			const code = stopCode(s);
+			const hasCode = isValidBusCode(code);
+			const badge = escapeHtml(code || '🚏');
+			const safeName = escapeHtml(s.tags?.name || 'Bus Stop');
+			const key = s.tags?.ref ? 'ref:' + s.tags.ref : 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
 
-				const busIcon = L.divIcon({
-					html: `
-						<div style="
-							width: 32px; height: 32px; border-radius: 50%;
-							background: linear-gradient(135deg, #059669, #10b981);
-							border: 2px solid white;
-							box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-							display: flex; align-items: center; justify-content: center;
-							color: white; font-weight: bold; font-size: 10px;
-							animation: fadeInScale 0.3s ease;
-						">${code}</div>
-					`,
-					className: 'bus-stop-marker',
-					iconSize: [32, 32],
-					iconAnchor: [16, 16]
-				});
+			const busIcon = L.divIcon({
+				html: `
+					<div style="
+						width: 32px; height: 32px; border-radius: 50%;
+						background: linear-gradient(135deg, #059669, #10b981);
+						border: 2px solid white;
+						box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+						display: flex; align-items: center; justify-content: center;
+						color: white; font-weight: bold; font-size: 10px;
+						animation: fadeInScale 0.3s ease;
+					">${badge}</div>
+				`,
+				className: 'bus-stop-marker',
+				iconSize: [32, 32],
+				iconAnchor: [16, 16]
+			});
 
-				const marker = L.marker([s.lat, s.lon], { icon: busIcon })
-					.bindPopup(`
-						<div style="min-width: 200px;">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-								<span style="font-size: 1.25rem;">🚌</span>
-								<b style="color: #059669;">${code}</b>
-							</div>
-							<div style="color: #4b5563; margin-bottom: 8px;">
-								${name}
-							</div>
-							<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
-								<span style="font-size: 0.875rem; color: #6b7280;">📍</span>
-								<span style="font-size: 0.875rem; color: #6b7280;">${formatDistance(distance)} away</span>
-							</div>
-							<a href="${arrivalUrl(code)}"
-							   target="_blank"
-							   style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">
-								<span>🕐</span>
-								View Times
-							</a>
+			const timesLink = hasCode
+				? `<a href="${arrivalUrl(code)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;"><span>🕐</span> View Times</a>`
+				: '';
+
+			const marker = L.marker([s.lat, s.lon], { icon: busIcon })
+				.bindPopup(`
+					<div style="min-width: 200px;">
+						<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+							<span style="font-size: 1.25rem;">🚌</span>
+							<b style="color: #059669;">${badge}</b>
 						</div>
-					`, {
-						maxWidth: 250,
-						closeButton: true
-					})
-					.addTo(stopLayer);
+						<div style="color: #4b5563; margin-bottom: 8px;">${safeName}</div>
+						<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
+							<span style="font-size: 0.875rem; color: #6b7280;">📍</span>
+							<span style="font-size: 0.875rem; color: #6b7280;">${formatDistance(distance)} away</span>
+						</div>
+						${timesLink}
+					</div>
+				`, { maxWidth: 250, closeButton: true })
+				.addTo(stopLayer);
 
-				stopMarkers.set(key, marker);
+			stopMarkers.set(key, marker);
 
-				// List row, synced to the map marker
-				const row = document.createElement('div');
-				row.className = 'stop-item';
-				row.setAttribute('role', 'listitem');
-				row.tabIndex = 0;
-				row.innerHTML = `
-					<span class="stop-code">${code}</span>
-					<span class="stop-info">
-						<span class="stop-name">${name}</span>
-						<span class="stop-distance">${formatDistance(distance)} away</span>
-					</span>
-					<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times →</a>
-				`;
-				// On a watch the map is tiny, so the most useful tap is "view arrival
-				// times"; on larger screens tapping a row focuses its map marker.
-				const isWatch = () => window.matchMedia('(max-width: 250px)').matches;
-				const activateRow = () => {
-					if (isWatch()) {
-						window.open(arrivalUrl(code), '_blank', 'noopener');
-					} else {
-						focusStop(key);
-					}
-				};
-				row.addEventListener('click', (e) => {
-					if (e.target.closest('.stop-times')) return; // let the link work
+			// List row, synced to the map marker
+			const row = document.createElement('div');
+			row.className = 'stop-item';
+			row.setAttribute('role', 'listitem');
+			row.tabIndex = 0;
+			row.innerHTML = `
+				<span class="stop-code">${badge}</span>
+				<span class="stop-info">
+					<span class="stop-name">${safeName}</span>
+					<span class="stop-distance">${formatDistance(distance)} away</span>
+				</span>
+				${hasCode ? `<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times →</a>` : ''}
+			`;
+			// On a watch the map is tiny, so the most useful tap is "view arrival times"
+			// (when the stop has a real code); otherwise tapping focuses its map marker.
+			const isWatch = () => window.matchMedia('(max-width: 250px)').matches;
+			const activateRow = () => {
+				if (hasCode && isWatch()) {
+					window.open(arrivalUrl(code), '_blank', 'noopener');
+				} else {
+					focusStop(key);
+				}
+			};
+			row.addEventListener('click', (e) => {
+				if (e.target.closest('.stop-times')) return; // let the link work
+				activateRow();
+			});
+			row.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
 					activateRow();
-				});
-				row.addEventListener('keydown', (e) => {
-					if (e.key === 'Enter' || e.key === ' ') {
-						e.preventDefault();
-						activateRow();
-					}
-				});
-				listEl.appendChild(row);
+				}
+			});
+			listEl.appendChild(row);
 
-				// Staggered animation for markers
-				setTimeout(() => {
-					if (marker._icon) marker._icon.style.animation = 'fadeInScale 0.5s ease';
-				}, index * 50);
+			// Staggered animation for markers
+			setTimeout(() => {
+				if (marker._icon) marker._icon.style.animation = 'fadeInScale 0.5s ease';
+			}, index * 50);
 			});
 
 			// Empty state with one-tap "expand radius" action
