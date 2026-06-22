@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /*
- * Build public/streets.jsonl — every named road in Singapore with a representative
+ * Build public/streets.jsonl - every named road in Singapore with a representative
  * coordinate, for fully-offline street search.
  *
- * Source: OpenStreetMap via Overpass (fetched ONCE at build time, then bundled —
+ * Source: OpenStreetMap via Overpass (fetched ONCE at build time, then bundled -
  * no live API at runtime). Run occasionally to refresh:
  *   node scripts/build-streets.cjs
  *
@@ -28,6 +28,19 @@ const QUERY = `
 way["highway"]["name"](${BBOX});
 out tags center;
 `.trim();
+
+function toAsciiName(name, fallback) {
+  return name
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([),.])/g, "$1")
+    .trim() || fallback;
+}
 
 async function fetchOverpass() {
   let lastErr;
@@ -74,7 +87,7 @@ async function main() {
 
   const streets = [...byName.entries()]
     .map(([name, g]) => ({
-      name,
+      name: toAsciiName(name, "Unnamed street"),
       lat: Number((g.latSum / g.n).toFixed(6)),
       lon: Number((g.lonSum / g.n).toFixed(6))
     }))

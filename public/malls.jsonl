@@ -49,7 +49,7 @@
 {"name":"Concorde Shopping Centre","lat":1.28895,"lon":103.834229}
 {"name":"Coronation Shopping Plaza","lat":1.323837,"lon":103.810002}
 {"name":"Courts","lat":1.331881,"lon":103.849838}
-{"name":"Da You (Chinatown) Departmental Store Pte Ltd 大有超級百貨（私人）有限公司","lat":1.28295,"lon":103.842676}
+{"name":"Da You (Chinatown) Departmental Store Pte Ltd","lat":1.28295,"lon":103.842676}
 {"name":"Dairy Farm Mall","lat":1.366014,"lon":103.775027}
 {"name":"Danga City Mall","lat":1.47426,"lon":103.755479}
 {"name":"Dawson Place","lat":1.292671,"lon":103.811096}
@@ -124,7 +124,7 @@
 {"name":"Katong Square","lat":1.304705,"lon":103.904719}
 {"name":"Katong V","lat":1.303133,"lon":103.903231}
 {"name":"Keat Hong Shopping Centre","lat":1.377326,"lon":103.744432}
-{"name":"Kian Joo Vegetarian Food Supply Centre 健裕斋料供应商.","lat":1.316143,"lon":103.887529}
+{"name":"Kian Joo Vegetarian Food Supply Centre","lat":1.316143,"lon":103.887529}
 {"name":"Kinex","lat":1.314653,"lon":103.894811}
 {"name":"Knightsbridge","lat":1.303163,"lon":103.836354}
 {"name":"Komtar JBCC","lat":1.463692,"lon":103.762779}
@@ -270,4 +270,4 @@
 {"name":"YewTee Point","lat":1.397088,"lon":103.746661}
 {"name":"Yue Hwa","lat":1.284933,"lon":103.843503}
 {"name":"Zhongshan Mall","lat":1.327147,"lon":103.846315}
-{"name":"無印良品","lat":1.301027,"lon":103.844971}
+{"name":"MUJI","lat":1.301027,"lon":103.844971}

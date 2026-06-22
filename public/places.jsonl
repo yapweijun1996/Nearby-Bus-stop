@@ -376,7 +376,7 @@
 {"name":"Colugo Deck","kind":"attraction","lat":1.344835,"lon":103.782085}
 {"name":"Columbia Asia Hospital Iskandar Puteri","kind":"hospital","lat":1.478963,"lon":103.636846}
 {"name":"ComfortDelGro Driving Centre","kind":"school","lat":1.336179,"lon":103.896599}
-{"name":"Comma Space 逗号空间","kind":"attraction","lat":1.277431,"lon":103.80346}
+{"name":"Comma Space","kind":"attraction","lat":1.277431,"lon":103.80346}
 {"name":"Common Green","kind":"park","lat":1.393321,"lon":103.87754}
 {"name":"Commonwealth Park","kind":"park","lat":1.296256,"lon":103.797853}
 {"name":"Commonwealth Secondary School","kind":"school","lat":1.319718,"lon":103.745679}
@@ -447,7 +447,7 @@
 {"name":"Dyslexia Association Of Singapore Sengkang Learning Centre","kind":"school","lat":1.393107,"lon":103.896317}
 {"name":"Dyslexia Association of Singapore Serangoon Learning Centre","kind":"school","lat":1.348775,"lon":103.87399}
 {"name":"Eager Beaver Schoolhouse @ Bukit Merah Central","kind":"school","lat":1.282263,"lon":103.818078}
-{"name":"Eagle’s Eye Gallery","kind":"attraction","lat":1.286936,"lon":103.847211}
+{"name":"Eagle's Eye Gallery","kind":"attraction","lat":1.286936,"lon":103.847211}
 {"name":"Eagle's Perch","kind":"attraction","lat":1.403765,"lon":103.795037}
 {"name":"East Asia Institute of Management","kind":"school","lat":1.285563,"lon":103.820806}
 {"name":"East Coast Park","kind":"park","lat":1.304731,"lon":103.922269}
@@ -829,7 +829,7 @@
 {"name":"Kandis Gardens","kind":"park","lat":1.456181,"lon":103.835722}
 {"name":"Karst Lookout","kind":"attraction","lat":1.409798,"lon":103.779951}
 {"name":"Kartright Speedway","kind":"attraction","lat":1.328969,"lon":103.682334}
-{"name":"Katong Antique House 加東古董","kind":"attraction","lat":1.307272,"lon":103.907134}
+{"name":"Katong Antique House","kind":"attraction","lat":1.307272,"lon":103.907134}
 {"name":"Katong Park","kind":"park","lat":1.29697,"lon":103.886791}
 {"name":"Keat Hong Garden","kind":"park","lat":1.375771,"lon":103.747299}
 {"name":"Keat Hong Park","kind":"park","lat":1.378635,"lon":103.734623}
@@ -1425,7 +1425,7 @@
 {"name":"School of Economics","kind":"school","lat":1.297649,"lon":103.849054}
 {"name":"School of Economics / School of Computing and Information Systems 2","kind":"school","lat":1.298048,"lon":103.84874}
 {"name":"School of Science and Technology, Singapore","kind":"school","lat":1.313122,"lon":103.773533}
-{"name":"Schrödinger's cat","kind":"park","lat":1.363215,"lon":103.889843}
+{"name":"Schrodinger's cat","kind":"park","lat":1.363215,"lon":103.889843}
 {"name":"Sci-Fi City","kind":"attraction","lat":1.253677,"lon":103.822}
 {"name":"Science Centre Singapore","kind":"attraction","lat":1.332873,"lon":103.736052}
 {"name":"SD 010 Bengkong","kind":"school","lat":1.153258,"lon":104.036292}
@@ -1573,8 +1573,8 @@
 {"name":"Site","kind":"park","lat":1.445765,"lon":103.730652}
 {"name":"SJIJ","kind":"school","lat":1.317674,"lon":103.846042}
 {"name":"SJK (C) Cheah Fah","kind":"school","lat":1.394165,"lon":103.631461}
-{"name":"SJK (C) Ming Chih , Horizons Hills 浩然山庄明智华小","kind":"school","lat":1.459455,"lon":103.64516}
-{"name":"SJK (C) Ming Terk, Gelang Patah 振林山明德华文小学","kind":"school","lat":1.45053,"lon":103.590288}
+{"name":"SJK (C) Ming Chih, Horizons Hills","kind":"school","lat":1.459455,"lon":103.64516}
+{"name":"SJK (C) Ming Terk, Gelang Patah","kind":"school","lat":1.45053,"lon":103.590288}
 {"name":"SJK(T) Gelang Patah","kind":"school","lat":1.458675,"lon":103.574834}
 {"name":"SK (P) Jalan Yahya Awal","kind":"school","lat":1.472742,"lon":103.749367}
 {"name":"SK & SMK Infant Jesus Convent","kind":"school","lat":1.465031,"lon":103.754966}
@@ -1660,7 +1660,7 @@
 {"name":"St Anthony's Canossian Primary School","kind":"school","lat":1.334904,"lon":103.940871}
 {"name":"St Anthony's Canossian Secondary School","kind":"school","lat":1.334932,"lon":103.94233}
 {"name":"St Gabriel's Primary School","kind":"school","lat":1.34958,"lon":103.862214}
-{"name":"St Luke’s Hospital","kind":"hospital","lat":1.349467,"lon":103.742109}
+{"name":"St Luke's Hospital","kind":"hospital","lat":1.349467,"lon":103.742109}
 {"name":"St. Andrew's Community Hospital (Bedok)","kind":"hospital","lat":1.315448,"lon":103.9322}
 {"name":"St. Andrew's Junior School","kind":"school","lat":1.331429,"lon":103.865096}
 {"name":"St. Andrew's Mission School","kind":"school","lat":1.342826,"lon":103.759954}
@@ -2002,5 +2002,5 @@
 {"name":"Zhonghua Secondary School","kind":"school","lat":1.348575,"lon":103.869696}
 {"name":"Zhongshan Park","kind":"park","lat":1.327223,"lon":103.847003}
 {"name":"Zoo Negeri Johor","kind":"attraction","lat":1.45774,"lon":103.752884}
-{"name":"新加坡中医学院","kind":"school","lat":1.33219,"lon":103.851343}
-{"name":"新加坡佛牙寺龙华院","kind":"attraction","lat":1.281305,"lon":103.844432}
+{"name":"Singapore College of Traditional Chinese Medicine","kind":"school","lat":1.33219,"lon":103.851343}
+{"name":"Buddha Tooth Relic Temple","kind":"attraction","lat":1.281305,"lon":103.844432}

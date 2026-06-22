@@ -1,4 +1,4 @@
-﻿		:root {
+		:root {
 			--primary: #4f46e5;
 			--primary-hover: #3730a3;
 			--primary-active: #312e81;
@@ -366,8 +366,13 @@
 		}
 
 		#showBtn::before {
-			content: 'â–²';
-			font-size: 18px;
+			content: none;
+		}
+
+		#showBtn > span {
+			display: block;
+			font-size: 0.75rem;
+			line-height: 1;
 		}
 
 		#results-counter {
@@ -470,7 +475,7 @@
 		}
 
 		.leaflet-popup-content a::after {
-			content: 'â†’' !important;
+			content: ' ->' !important;
 			font-weight: 600 !important;
 		}
 

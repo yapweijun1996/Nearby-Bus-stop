@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Build public/places.jsonl — Singapore landmarks (schools, hospitals, parks,
+ * Build public/places.jsonl - Singapore landmarks (schools, hospitals, parks,
  * tourist attractions) with a coordinate, for offline landmark search.
  * Source: OpenStreetMap via Overpass, fetched ONCE at build time.
  *
@@ -30,6 +30,19 @@ const QUERY = `
 );
 out tags center;
 `.trim();
+
+function toAsciiName(name, fallback) {
+  return name
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([),.])/g, "$1")
+    .trim() || fallback;
+}
 
 function kindOf(tags) {
   const a = tags.amenity, l = tags.leisure, t = tags.tourism;
@@ -84,7 +97,7 @@ async function main() {
   }
 
   const places = [...byKey.values()]
-    .map(p => ({ name: p.name, kind: p.kind, lat: Number(p.lat.toFixed(6)), lon: Number(p.lon.toFixed(6)) }))
+    .map(p => ({ name: toAsciiName(p.name, `Unnamed ${p.kind}`), kind: p.kind, lat: Number(p.lat.toFixed(6)), lon: Number(p.lon.toFixed(6)) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const counts = places.reduce((m, p) => (m[p.kind] = (m[p.kind] || 0) + 1, m), {});

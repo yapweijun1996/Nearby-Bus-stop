@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Build public/malls.jsonl — Singapore shopping malls with a coordinate, for
+ * Build public/malls.jsonl - Singapore shopping malls with a coordinate, for
  * offline mall search. Source: OpenStreetMap via Overpass, fetched ONCE at build
  * time (no live API at runtime).
  *
@@ -29,6 +29,19 @@ const QUERY = `
 );
 out tags center;
 `.trim();
+
+function toAsciiName(name, fallback) {
+  return name
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([),.])/g, "$1")
+    .trim() || fallback;
+}
 
 async function fetchOverpass() {
   let lastErr;
@@ -71,7 +84,7 @@ async function main() {
   }
 
   const malls = [...byName.entries()]
-    .map(([name, c]) => ({ name, lat: Number(c.lat.toFixed(6)), lon: Number(c.lon.toFixed(6)) }))
+    .map(([name, c]) => ({ name: toAsciiName(name, "Unnamed mall"), lat: Number(c.lat.toFixed(6)), lon: Number(c.lon.toFixed(6)) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const jsonl = malls.map(m => JSON.stringify(m)).join("\n") + "\n";

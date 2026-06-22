@@ -10,22 +10,22 @@ copy of the LTA bus-stop list.
 
 ## Features
 
-- **Locate me** — center the map on your position and list bus stops within the radius.
-- **Nearby list** — every stop shows its LTA code, name, distance, and estimated walk
+- **Locate me** - center the map on your position and list bus stops within the radius.
+- **Nearby list** - every stop shows its LTA code, name, distance, and estimated walk
   time; tapping a row flies the map to that stop (or opens live arrival times on a watch).
-- **Adjustable radius** — slider from 100 m to 2 km (default **200 m**).
-- **Offline multi-search** — one search box matches bundled data in priority order:
+- **Adjustable radius** - slider from 100 m to 2 km (default **200 m**).
+- **Offline multi-search** - one search box matches bundled data in priority order:
   bus-stop **code**, **MRT/LRT** station (by code like `NS1` or name), **shopping mall**,
-  **landmark**, **road name**, then bus-stop name — all locally. It only falls back to
+  **landmark**, **road name**, then bus-stop name - all locally. It only falls back to
   Overpass place geocoding when nothing matches.
-- **Live arrival times** — each stop links to the arrival-time lookup (shown only for
+- **Live arrival times** - each stop links to the arrival-time lookup (shown only for
   valid 5-digit LTA codes, so there are no dead links).
-- **Works offline** — when `public/bus-stops.jsonl` is present, nearby lookups are local
+- **Works offline** - when `public/bus-stops.jsonl` is present, nearby lookups are local
   and instant with no API calls; a service worker caches the app shell.
-- **Responsive** — tuned layouts for desktop, tablet, mobile, and Apple Watch / ultra-small
+- **Responsive** - tuned layouts for desktop, tablet, mobile, and Apple Watch / ultra-small
   screens (icon toolbar, list-first layout, tap-to-expand search).
-- **Installable PWA** — manifest, icons, service worker, and an offline fallback page.
-- **Shareable URLs** — open a specific point with `?lat=1.283&lon=103.860`.
+- **Installable PWA** - manifest, icons, service worker, and an offline fallback page.
+- **Shareable URLs** - open a specific point with `?lat=1.283&lon=103.860`.
 
 ## Data sources
 
@@ -33,16 +33,16 @@ copy of the LTA bus-stop list.
 | --- | --- |
 | Nearby bus stops (primary) | Bundled `public/bus-stops.jsonl`, generated from [LTA DataMall](https://datamall.lta.gov.sg/) |
 | Nearby bus stops (fallback) | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) (`highway=bus_stop`, `public_transport=platform`) |
-| Street search (offline) | Bundled `public/streets.jsonl` — all named SG roads, generated from OpenStreetMap |
-| Mall search (offline) | Bundled `public/malls.jsonl` — SG shopping malls, generated from OpenStreetMap |
-| MRT/LRT search (offline) | Bundled `public/mrt.jsonl` — SG rail stations (by name or code), from OpenStreetMap |
-| Landmark search (offline) | Bundled `public/places.jsonl` — SG schools, hospitals, parks, attractions, from OpenStreetMap |
+| Street search (offline) | Bundled `public/streets.jsonl` - all named SG roads, generated from OpenStreetMap |
+| Mall search (offline) | Bundled `public/malls.jsonl` - SG shopping malls, generated from OpenStreetMap |
+| MRT/LRT search (offline) | Bundled `public/mrt.jsonl` - SG rail stations (by name or code), from OpenStreetMap |
+| Landmark search (offline) | Bundled `public/places.jsonl` - SG schools, hospitals, parks, attractions, from OpenStreetMap |
 | Place search (fallback) | Overpass API geocoding |
-| Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) (default) — see **Map tiles** below |
+| Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) (default) - see **Map tiles** below |
 | Map library | [Leaflet](https://leafletjs.com/) 1.9.4 (pinned, with SRI) |
 
 If `bus-stops.jsonl` is missing, the app automatically falls back to live Overpass
-queries — nothing breaks, it is just slower and subject to rate limits.
+queries - nothing breaks, it is just slower and subject to rate limits.
 
 `bus-stops.jsonl` is one JSON object per line:
 
@@ -54,16 +54,16 @@ queries — nothing breaks, it is just slower and subject to rate limits.
 
 The default map uses free **OpenStreetMap** tiles, which under the
 [OSMF tile policy](https://operations.osmfoundation.org/policies/tiles/) are for
-**hobby / low-volume use only** — heavy or commercial use will be rate-limited or
+**hobby / low-volume use only** - heavy or commercial use will be rate-limited or
 blocked. For production or business use, switch to a paid tile provider (MapTiler,
-Mapbox, Stadia Maps, Thunderforest, …) via the `TILE_CONFIG` block near the top of the
+Mapbox, Stadia Maps, Thunderforest, ...) via the `TILE_CONFIG` block near the top of the
 inline script in [`index.html`](index.html):
 
 ```js
 const TILE_CONFIG = {
   provider: 'custom',
   url: 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=YOUR_KEY',
-  attribution: '© <a href="https://www.maptiler.com/">MapTiler</a> © OpenStreetMap contributors',
+  attribution: '(c) <a href="https://www.maptiler.com/">MapTiler</a> (c) OpenStreetMap contributors',
   maxZoom: 19
 };
 ```
@@ -130,7 +130,7 @@ Data is provided under the Singapore Open Data Licence.
 ### Refreshing the OpenStreetMap indexes
 
 The street, mall, and MRT/LRT indexes are generated from OpenStreetMap (via Overpass,
-fetched once at build time — no key, no runtime API):
+fetched once at build time - no key, no runtime API):
 
 ```bash
 npm run streets     # rewrites public/streets.jsonl (all named SG roads)
@@ -139,7 +139,7 @@ npm run mrt         # rewrites public/mrt.jsonl      (SG MRT/LRT stations)
 ```
 
 `npm run build` refreshes all of these automatically. If an Overpass fetch fails (it is a
-shared, rate-limited service), the build keeps the existing file instead of breaking — so
+shared, rate-limited service), the build keeps the existing file instead of breaking - so
 a transient outage never blocks a build.
 
 ## Deployment (GitHub Pages)
@@ -147,16 +147,16 @@ a transient outage never blocks a build.
 [GitHub Actions](.github/workflows/deploy-pages.yml) builds with Vite and publishes the
 `dist/` folder on every push to `main`/`master`.
 
-1. In the repo, set **Settings → Pages → Source: GitHub Actions**.
+1. In the repo, set **Settings -> Pages -> Source: GitHub Actions**.
 2. Push your changes.
-3. CI runs `npm ci` + `npm run build:pages` (no API key needed — it uses the committed
+3. CI runs `npm ci` + `npm run build:pages` (no API key needed - it uses the committed
    `bus-stops.jsonl`) and deploys `dist/`.
 
 ## Install as an app (PWA)
 
-- **iPhone/iPad** — open the site in Safari → Share → **Add to Home Screen**.
-- **Android** — open in Chrome → **Install app** / **Add to Home screen**.
-- **Desktop** — Chrome/Edge → install button in the address bar.
+- **iPhone/iPad** - open the site in Safari -> Share -> **Add to Home Screen**.
+- **Android** - open in Chrome -> **Install app** / **Add to Home screen**.
+- **Desktop** - Chrome/Edge -> install button in the address bar.
 - Offline: the app shell and bundled stops work offline; live arrival times and place
   search still need a network connection.
 
@@ -167,4 +167,4 @@ location is never stored or sent to any server.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

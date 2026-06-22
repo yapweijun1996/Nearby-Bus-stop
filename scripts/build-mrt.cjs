@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Build public/mrt.jsonl — Singapore MRT/LRT stations with a coordinate, for
+ * Build public/mrt.jsonl - Singapore MRT/LRT stations with a coordinate, for
  * offline station search. Source: OpenStreetMap via Overpass, fetched ONCE at
  * build time (no live API at runtime).
  *
@@ -32,6 +32,19 @@ const QUERY = `
 out tags center;
 `.trim();
 
+function toAsciiName(name, fallback) {
+  return name
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([),.])/g, "$1")
+    .trim() || fallback;
+}
+
 async function fetchOverpass() {
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -61,7 +74,8 @@ async function fetchOverpass() {
 
 function cleanName(name) {
   // Normalise "Jurong East MRT Station" -> "Jurong East" for nicer display/search
-  return name.replace(/\s+(MRT|LRT)\b.*$/i, "").trim() || name;
+  const shortName = name.replace(/\s+(MRT|LRT)\b.*$/i, "").trim() || name;
+  return toAsciiName(shortName, "Unnamed station");
 }
 
 async function main() {

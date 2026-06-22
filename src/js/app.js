@@ -1,4 +1,4 @@
-﻿import { initControlsSheet } from './controls-sheet.js';
+import { initControlsSheet } from './controls-sheet.js';
 import { initSearchCombobox } from './search.js';
 
 		const DEFAULT = { lat: 1.283, lon: 103.860 };
@@ -405,10 +405,10 @@ import { initSearchCombobox } from './search.js';
 			messageDiv.id = 'message-popup';
 
 			const colors = {
-				info: { bg: '#4f46e5', icon: 'â„¹ï¸' },
-				success: { bg: '#059669', icon: 'âœ…' },
-				warning: { bg: '#d97706', icon: 'âš ï¸' },
-				error: { bg: '#dc2626', icon: 'âŒ' }
+				info: { bg: '#4f46e5', icon: 'i' },
+				success: { bg: '#059669', icon: 'OK' },
+				warning: { bg: '#d97706', icon: '!' },
+				error: { bg: '#dc2626', icon: 'X' }
 			};
 
 			const color = colors[type] || colors.info;
@@ -586,7 +586,7 @@ import { initSearchCombobox } from './search.js';
 			// Immediate visual feedback
 			renderStops();
 
-			// With the local dataset, all stops are already loaded â€” renderStops()
+			// With the local dataset, all stops are already loaded - renderStops()
 			// above re-filters by the new radius, so no API call is needed.
 			if (localStops) return;
 
@@ -1125,7 +1125,7 @@ import { initSearchCombobox } from './search.js';
 				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.tags.name };
 			}
 
-			// 2. MRT/LRT station â€” by station code (e.g. "ns1") or name
+			// 2. MRT/LRT station - by station code (e.g. "ns1") or name
 			if (localMrt) {
 				const byCode = localMrt.find(s => s._codes.includes(q));
 				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.name };
@@ -1292,7 +1292,7 @@ import { initSearchCombobox } from './search.js';
 					<span class="stop-name">${safeName}</span>
 					<span class="stop-distance">${distLabel}</span>
 				</span>
-				${hasCode ? `<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times â†’</a>` : ''}
+				${hasCode ? `<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times -></a>` : ''}
 			`;
 			// On a watch the map is tiny, so the most useful tap is "view arrival times"
 			// (when the stop has a real code); otherwise tapping focuses its map marker.
