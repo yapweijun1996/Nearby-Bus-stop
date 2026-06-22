@@ -14,8 +14,10 @@ copy of the LTA bus-stop list.
 - **Nearby list** — every stop shows its LTA code, name, distance, and estimated walk
   time; tapping a row flies the map to that stop (or opens live arrival times on a watch).
 - **Adjustable radius** — slider from 100 m to 2 km (default **200 m**).
-- **Search (local + places)** — matches bundled bus stops by code or name first, then
-  falls back to Overpass place geocoding for arbitrary locations.
+- **Offline multi-search** — one search box matches bundled data in priority order:
+  bus-stop **code**, **MRT/LRT** station (by code like `NS1` or name), **shopping mall**,
+  **landmark**, **road name**, then bus-stop name — all locally. It only falls back to
+  Overpass place geocoding when nothing matches.
 - **Live arrival times** — each stop links to the arrival-time lookup (shown only for
   valid 5-digit LTA codes, so there are no dead links).
 - **Works offline** — when `public/bus-stops.jsonl` is present, nearby lookups are local
@@ -36,7 +38,7 @@ copy of the LTA bus-stop list.
 | MRT/LRT search (offline) | Bundled `public/mrt.jsonl` — SG rail stations (by name or code), from OpenStreetMap |
 | Landmark search (offline) | Bundled `public/places.jsonl` — SG schools, hospitals, parks, attractions, from OpenStreetMap |
 | Place search (fallback) | Overpass API geocoding |
-| Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) |
+| Base map tiles | [OpenStreetMap](https://www.openstreetmap.org/) (default) — see **Map tiles** below |
 | Map library | [Leaflet](https://leafletjs.com/) 1.9.4 (pinned, with SRI) |
 
 If `bus-stops.jsonl` is missing, the app automatically falls back to live Overpass
@@ -48,18 +50,46 @@ queries — nothing breaks, it is just slower and subject to rate limits.
 {"code":"07379","name":"Aperia/Before Kallang Road","road":"Kallang Road","lat":1.2821,"lon":103.8591}
 ```
 
+## Map tiles
+
+The default map uses free **OpenStreetMap** tiles, which under the
+[OSMF tile policy](https://operations.osmfoundation.org/policies/tiles/) are for
+**hobby / low-volume use only** — heavy or commercial use will be rate-limited or
+blocked. For production or business use, switch to a paid tile provider (MapTiler,
+Mapbox, Stadia Maps, Thunderforest, …) via the `TILE_CONFIG` block near the top of the
+inline script in [`index.html`](index.html):
+
+```js
+const TILE_CONFIG = {
+  provider: 'custom',
+  url: 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=YOUR_KEY',
+  attribution: '© <a href="https://www.maptiler.com/">MapTiler</a> © OpenStreetMap contributors',
+  maxZoom: 19
+};
+```
+
+Attribution for the map tiles and the LTA bus data (Singapore Open Data Licence) is shown
+in the corner of the map and must stay visible.
+
 ## Project layout
 
 ```
-index.html              App entry (HTML + inline CSS/JS), Vite entry point
-public/                 Static assets copied verbatim into the build
-  bus-stops.jsonl       Bundled SG bus-stop dataset
-  manifest.webmanifest  PWA manifest
-  service-worker.js     Offline caching (app shell + network-first dataset)
-  offline.html          Offline fallback page
-  icons/                App icons
-scripts/build-stops.cjs Generates public/bus-stops.jsonl from LTA DataMall
-vite.config.js          Vite config (base './' for the Pages sub-path)
+index.html               App entry (HTML + inline CSS/JS), Vite entry point
+public/                  Static assets copied verbatim into the build
+  bus-stops.jsonl        Bundled SG bus-stop dataset (nearby + search)
+  mrt.jsonl              Bundled MRT/LRT stations (search)
+  malls.jsonl            Bundled shopping malls (search)
+  streets.jsonl          Bundled named roads (search)
+  places.jsonl           Bundled landmarks (search)
+  manifest.webmanifest   PWA manifest
+  service-worker.js      Offline caching (app shell + network-first datasets)
+  offline.html           Offline fallback page
+  icons/                 App icons
+scripts/build-stops.cjs  Generates public/bus-stops.jsonl from LTA DataMall
+scripts/build-streets.cjs Generates public/streets.jsonl from OpenStreetMap
+scripts/build-malls.cjs  Generates public/malls.jsonl from OpenStreetMap
+scripts/build-mrt.cjs    Generates public/mrt.jsonl from OpenStreetMap
+vite.config.js           Vite config (base './' for the Pages sub-path)
 ```
 
 ## Develop & build
@@ -97,20 +127,20 @@ or sent to the browser.
 
 Data is provided under the Singapore Open Data Licence.
 
-### Refreshing the street index
+### Refreshing the OpenStreetMap indexes
 
-`public/streets.jsonl` holds every named Singapore road (~8.4k) with a representative
-coordinate, used for offline street search. It is generated from OpenStreetMap (via
-Overpass, fetched once at build time — no key, no runtime API):
+The street, mall, and MRT/LRT indexes are generated from OpenStreetMap (via Overpass,
+fetched once at build time — no key, no runtime API):
 
 ```bash
-npm run streets     # rewrites public/streets.jsonl
-git add public/streets.jsonl && git commit -m "Refresh street index"
+npm run streets     # rewrites public/streets.jsonl (all named SG roads)
+npm run malls       # rewrites public/malls.jsonl   (SG shopping malls)
+npm run mrt         # rewrites public/mrt.jsonl      (SG MRT/LRT stations)
 ```
 
-`npm run build` also refreshes the street index automatically. If the Overpass
-fetch fails (it is a shared, rate-limited service), the build keeps the existing
-`streets.jsonl` instead of breaking — so a transient outage never blocks a build.
+`npm run build` refreshes all of these automatically. If an Overpass fetch fails (it is a
+shared, rate-limited service), the build keeps the existing file instead of breaking — so
+a transient outage never blocks a build.
 
 ## Deployment (GitHub Pages)
 
