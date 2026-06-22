@@ -233,24 +233,41 @@ The application uses a modern, real-time architecture with dynamic data fetching
 - Automatic retry logic with exponential backoff for failed requests
 - Comprehensive error handling with user-friendly feedback messages
 
-## Installation & Usage
+## Build & Develop (Vite)
 
-### Running Locally
+The project uses [Vite](https://vitejs.dev/). Static assets live in `public/`
+(`bus-stops.jsonl`, `manifest.webmanifest`, `service-worker.js`, `offline.html`,
+`icons/`); the app entry is `index.html`; the production build is emitted to `dist/`.
 
-1. Clone or download this repository.
-2. Open `index.html` in a modern web browser.
-3. Grant location permissions when prompted to see nearby bus stops.
-4. Use the search bar to find specific locations.
-5. Adjust the radius slider to control the search distance.
-6. Click on bus stop markers for detailed information.
+```bash
+npm install            # one-time
+npm run dev            # local dev server (HMR) at http://localhost:5173
+npm run build          # refresh bus-stops.jsonl from DataMall, then build to dist/
+npm run build:pages    # build only (no data refresh) — used by CI
+npm run preview        # serve the production build locally
+```
+
+### Refreshing the bus-stop data
+
+`npm run build` runs `npm run data` first, which calls LTA DataMall and rewrites
+`public/bus-stops.jsonl` to the latest list, then builds the site.
+
+1. Copy `.env.example` to `.env` and set your `LTA_ACCOUNT_KEY` (`.env` is gitignored).
+2. Run `npm run build` (or just `npm run data` to refresh data without building).
+3. Commit the updated `public/bus-stops.jsonl`.
+
+The DataMall key is **only ever used locally** — CI builds from the committed
+dataset and never needs the key.
 
 ### GitHub Pages Deployment (Automated)
 
-This repository now includes [GitHub Actions](.github/workflows/deploy-pages.yml) to deploy the static site automatically to GitHub Pages on every push.
+[GitHub Actions](.github/workflows/deploy-pages.yml) builds with Vite and deploys
+the `dist/` folder on every push.
 
-1. Ensure your repository has GitHub Pages enabled with **Source: GitHub Actions**.
-2. Push changes to either `main` or `master`.
-3. GitHub Actions publishes `index.html` and repository files automatically.
+1. Ensure GitHub Pages is enabled with **Source: GitHub Actions**.
+2. Push to `main` or `master`.
+3. The workflow runs `npm ci` + `npm run build:pages` (no API key needed) and
+   publishes `dist/`.
 4. Access the deployed site from your repository's Pages URL.
 
 ### PWA Installation

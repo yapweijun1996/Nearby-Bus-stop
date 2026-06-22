@@ -27,13 +27,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # CI builds from the committed public/bus-stops.jsonl; the DataMall refresh
+      # (npm run data) runs locally only, so no API key is needed here.
+      - name: Build site
+        run: npm run build:pages
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload static files
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       - name: Deploy to GitHub Pages
         id: deploy

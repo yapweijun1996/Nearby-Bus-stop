@@ -19,14 +19,28 @@
 const fs = require("fs");
 const path = require("path");
 
-const KEY = process.argv[2] || process.env.LTA_ACCOUNT_KEY;
-if (!KEY) {
-  console.error("Missing AccountKey. Usage: node scripts/build-stops.cjs <AccountKey>");
+// Minimal .env reader (avoids a dotenv dependency)
+function readEnvKey(name) {
+  try {
+    const envPath = path.join(__dirname, "..", ".env");
+    const text = fs.readFileSync(envPath, "utf8");
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && m[1] === name) return m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch (e) { /* no .env file */ }
+  return undefined;
+}
+
+const KEY = process.argv[2] || process.env.LTA_ACCOUNT_KEY || readEnvKey("LTA_ACCOUNT_KEY");
+if (!KEY || KEY === "your-account-key-here") {
+  console.error("Missing AccountKey. Set LTA_ACCOUNT_KEY in .env (see .env.example),");
+  console.error("or run: node scripts/build-stops.cjs <AccountKey>");
   process.exit(1);
 }
 
 const ENDPOINT = "https://datamall2.mytransport.sg/ltaodataservice/BusStops";
-const OUT = path.join(__dirname, "..", "bus-stops.jsonl");
+const OUT = path.join(__dirname, "..", "public", "bus-stops.jsonl");
 
 async function main() {
   const stops = [];
