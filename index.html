@@ -730,6 +730,335 @@
 				font-size: 0.8125rem !important;
 			}
 		}
+
+		/* Bus stop list */
+		.stop-list {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			max-height: 40vh;
+			overflow-y: auto;
+			-webkit-overflow-scrolling: touch;
+			margin: -4px -4px 0;
+			padding: 4px;
+		}
+
+		.stop-list-empty {
+			color: var(--text-light);
+			font-size: 0.875rem;
+			text-align: center;
+			padding: 16px 8px;
+		}
+
+		.stop-list-empty button {
+			margin-top: 10px;
+			background: var(--primary);
+			color: #fff;
+			border: none;
+			border-radius: var(--radius);
+			padding: 8px 14px;
+			font-size: 0.8125rem;
+			font-weight: 500;
+			cursor: pointer;
+			min-height: 40px;
+		}
+
+		.stop-item {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 10px 12px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			background: #fff;
+			cursor: pointer;
+			transition: background 0.15s ease, transform 0.1s ease;
+			text-align: left;
+			width: 100%;
+			font-family: inherit;
+		}
+
+		.stop-item:hover {
+			background: #f1f5f9;
+		}
+
+		.stop-item:active {
+			transform: scale(0.99);
+		}
+
+		.stop-item:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+
+		.stop-code {
+			flex-shrink: 0;
+			min-width: 44px;
+			height: 36px;
+			padding: 0 8px;
+			border-radius: 8px;
+			background: linear-gradient(135deg, #059669, #10b981);
+			color: #fff;
+			font-weight: 700;
+			font-size: 0.8125rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.stop-info {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.stop-name {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: var(--text);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.stop-distance {
+			font-size: 0.75rem;
+			color: var(--text-light);
+			margin-top: 2px;
+		}
+
+		.stop-times {
+			flex-shrink: 0;
+			color: var(--primary);
+			font-size: 0.75rem;
+			font-weight: 600;
+			text-decoration: none;
+			padding: 6px 8px;
+			border-radius: 8px;
+			background: rgba(79, 70, 229, 0.08);
+		}
+
+		.stop-times:hover {
+			background: rgba(79, 70, 229, 0.16);
+		}
+
+		/* PC / iPad: cap the panel width and center it so it isn't stretched */
+		@media (min-width: 768px) {
+			.controls {
+				left: 50%;
+				right: auto;
+				transform: translateX(-50%);
+				width: 440px;
+				max-width: calc(100vw - 32px);
+			}
+
+			.controls.hidden {
+				transform: translateX(-50%) translateY(calc(100% + 32px));
+			}
+		}
+
+		/* Watch-only controls are hidden on every larger screen.
+		   Specificity must beat `.controls-row button { display:flex }`. */
+		.controls-row button.watch-only {
+			display: none;
+		}
+
+		/* Apple Watch / ultra-tiny screens (~150-205px wide).
+		   Map + bottom sheet + search + 4 buttons can't fit, so switch to a
+		   list-first layout: a small map strip on top, a full bus-stop list below. */
+		@media (max-width: 250px) {
+			#map {
+				height: 38vh;
+				transition: height 0.3s ease;
+			}
+
+			/* Tapping Hide collapses the panel and lets the map fill the screen */
+			.controls.hidden ~ #map {
+				height: 100%;
+			}
+
+			.controls {
+				position: fixed;
+				left: 0;
+				right: 0;
+				top: 38vh;
+				bottom: 0;
+				width: auto;
+				max-width: none;
+				max-height: none;
+				border-radius: 0;
+				border: none;
+				border-top: 1px solid var(--border);
+				padding: 4px 6px;
+				gap: 4px;
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				transform: none;
+				opacity: 1;
+				box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+			}
+
+			.controls.hidden {
+				transform: translateY(100%);
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			/* Radius is fixed at the 150m default (walking distance) to free space */
+			.sheet-handle,
+			.radius-row,
+			#retryBtn {
+				display: none !important;
+			}
+
+			/* Search is hidden until the 🔍 toggle is tapped, then it slides in
+			   above the list (which yields its space while searching). */
+			.search-row {
+				display: none;
+				order: 1;
+			}
+
+			.controls.searching .search-row {
+				display: flex;
+				gap: 4px;
+			}
+
+			.controls.searching .stop-list {
+				display: none;
+			}
+
+			.search-row input[type="text"] {
+				min-height: 32px;
+				padding: 6px 10px;
+				font-size: 16px; /* avoid input zoom */
+			}
+
+			.search-row button {
+				min-height: 32px;
+				min-width: 36px;
+				padding: 5px 6px;
+				flex-shrink: 0;
+			}
+
+			.search-row button > span {
+				display: none;
+			}
+
+			.search-row button svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			/* Bottom toolbar: compact, icon-only buttons (labels hidden) */
+			.action-row {
+				order: 3;
+				gap: 4px;
+			}
+
+			.action-row button {
+				flex: 1;
+				min-width: 0;
+				min-height: 32px;
+				padding: 5px 4px;
+				font-size: 0;
+			}
+
+			.action-row button > span {
+				display: none;
+			}
+
+			.action-row button svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			/* Reveal the watch-only search toggle */
+			.watch-only {
+				display: flex !important;
+			}
+
+			/* List sits between the map strip and the toolbar, taking all the space */
+			.stop-list {
+				order: 2;
+				flex: 1;
+				max-height: none;
+				gap: 5px;
+				margin: 0;
+				padding: 2px 0;
+			}
+
+			.stop-item {
+				gap: 8px;
+				padding: 6px 8px;
+			}
+
+			.stop-code {
+				min-width: 38px;
+				height: 30px;
+				font-size: 0.6875rem;
+			}
+
+			.stop-name {
+				font-size: 0.75rem;
+			}
+
+			.stop-distance {
+				font-size: 0.625rem;
+			}
+
+			/* Whole row is the tap target on a watch; hide the separate link chip */
+			.stop-times {
+				display: none;
+			}
+
+			.stop-list-empty {
+				font-size: 0.6875rem;
+				padding: 10px 6px;
+			}
+
+			/* Keep the count/loading pills small and out of the way */
+			#results-counter {
+				top: 4px !important;
+				font-size: 0.625rem !important;
+				padding: 3px 8px !important;
+				max-width: calc(100vw - 16px) !important;
+				white-space: nowrap !important;
+				overflow: hidden !important;
+				text-overflow: ellipsis !important;
+			}
+
+			#loading-pill {
+				font-size: 0.625rem !important;
+				padding: 4px 10px !important;
+			}
+
+			/* Toast on a watch: span the full width, no off-screen overflow,
+			   tiny text. (Beats the JS inline styles via !important.) */
+			#message-popup {
+				top: 4px !important;
+				left: 6px !important;
+				right: 6px !important;
+				max-width: none !important;
+				padding: 6px 8px !important;
+				gap: 6px !important;
+				font-size: 0.625rem !important;
+				border-radius: 8px !important;
+				align-items: center !important;
+			}
+
+			#message-popup > span:first-child {
+				font-size: 0.8125rem !important;
+			}
+
+			#message-popup > span:nth-child(2) {
+				line-height: 1.3 !important;
+			}
+
+			#message-popup > button {
+				font-size: 1rem !important;
+				margin-left: 4px !important;
+			}
+		}
 	</style>
 </head>
 
@@ -739,13 +1068,13 @@
 	<div class="controls" id="controls">
 		<div class="sheet-handle"></div>
 
-		<div class="controls-row">
-			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">500</span>m</label>
-			<input type="range" id="radius" min="100" max="2000" value="500" step="100" style="width: 65%;"
+		<div class="controls-row radius-row">
+			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">150</span>m</label>
+			<input type="range" id="radius" min="100" max="2000" value="150" step="50" style="width: 65%;"
 				   aria-label="Search radius in meters" aria-describedby="radiusValue" />
 		</div>
 
-		<div class="controls-row">
+		<div class="controls-row search-row">
 			<input type="text" id="searchInput" placeholder="Search for a location..." aria-label="Search for a location"
 				   autocomplete="off" spellcheck="false" />
 			<button id="searchBtn" class="btn-primary" aria-label="Search for location">
@@ -758,13 +1087,20 @@
 			</button>
 		</div>
 
-		<div class="controls-row">
+		<div class="controls-row action-row">
 			<button id="locateBtn" class="btn-primary" aria-label="Get current location">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 					<path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"
 						stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
 				</svg>
 				<span>Locate Me</span>
+			</button>
+			<button id="searchToggleBtn" class="btn-primary watch-only" aria-label="Search for a location" aria-expanded="false">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path d="M21 21L16.514 16.506M19 10.5C19 15.194 15.194 19 10.5 19S2 15.194 2 10.5 5.806 2 10.5 2 19 5.806 19 10.5Z"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+				<span>Search</span>
 			</button>
 			<button id="retryBtn" class="btn-primary" aria-label="Retry API requests" style="display: none;">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -789,6 +1125,10 @@
 				<span>Fullscreen</span>
 			</button>
 		</div>
+
+		<div id="stopList" class="stop-list" role="list" aria-label="Nearby bus stops">
+			<div class="stop-list-empty">Find your location to see nearby bus stops.</div>
+		</div>
 	</div>
 
 	<div id="map"></div>
@@ -811,7 +1151,7 @@
 
 		// Enhanced visual elements
 		const circle = L.circle([DEFAULT.lat, DEFAULT.lon], {
-			radius: 500,
+			radius: 150,
 			color: '#4f46e5',
 			fillColor: '#4f46e5',
 			fillOpacity: 0.1,
@@ -1009,7 +1349,7 @@
 				if (data.elements.length === 0) {
 					showMessage('No bus stops found in the specified area', 'warning');
 				} else {
-					showMessage(`Found ${data.elements.length} bus stops`, 'success');
+					showMessage('Bus stop data updated', 'success');
 				}
 
 				busStopsData = data.elements;
@@ -1067,88 +1407,74 @@
 			}
 		}
 
-		function showLoadingState(message) {
-			// Enhanced full-screen loading overlay
-			hideLoadingState(); // Remove any existing loader
-
-			const overlay = document.createElement('div');
-			overlay.id = 'loading-overlay';
-			overlay.style.cssText = `
-				position: fixed;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				background: rgba(0, 0, 0, 0.6);
-				backdrop-filter: blur(4px);
-				z-index: 9999;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				animation: fadeIn 0.3s ease;
+		// Lightweight, NON-blocking loading indicator: a small pill at the top with a
+		// mini spinner. Replaces the old full-screen dark overlay so dragging the radius
+		// slider (or any background refresh) no longer blocks the whole map.
+		function ensureLoadingAnimations() {
+			if (document.getElementById('loading-animations')) return;
+			const style = document.createElement('style');
+			style.id = 'loading-animations';
+			style.textContent = `
+				@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+				@keyframes pillIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+				@keyframes pillOut { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -8px); } }
 			`;
+			document.head.appendChild(style);
+		}
 
-			overlay.innerHTML = `
-				<div style="
+		function showLoadingState(message) {
+			ensureLoadingAnimations();
+
+			let pill = document.getElementById('loading-pill');
+			if (!pill) {
+				pill = document.createElement('div');
+				pill.id = 'loading-pill';
+				pill.setAttribute('role', 'status');
+				pill.setAttribute('aria-live', 'polite');
+				pill.style.cssText = `
+					position: fixed;
+					top: calc(12px + env(safe-area-inset-top));
+					left: 50%;
+					transform: translateX(-50%);
+					display: flex;
+					align-items: center;
+					gap: 10px;
 					background: var(--surface);
-					padding: 32px;
-					border-radius: var(--radius-lg);
-					text-align: center;
+					backdrop-filter: blur(20px) saturate(180%);
+					color: var(--text);
+					padding: 8px 16px;
+					border-radius: var(--radius-full);
+					font-size: 0.8125rem;
+					font-weight: 500;
 					box-shadow: var(--shadow);
 					border: 1px solid var(--border);
-					max-width: 300px;
-					animation: slideUp 0.3s ease;
-				">
-					<div style="
-						width: 48px;
-						height: 48px;
-						border: 3px solid var(--border);
-						border-top: 3px solid var(--primary);
-						border-radius: 50%;
-						animation: spin 1s linear infinite;
-						margin: 0 auto 16px;
-					"></div>
-					<div style="color: var(--text); font-weight: 500; margin-bottom: 8px;">${message}</div>
-					<div style="color: var(--text-light); font-size: 0.875rem;">Please wait...</div>
-				</div>
-			`;
-
-			document.body.appendChild(overlay);
-
-			// Add CSS animations if not already present
-			if (!document.getElementById('loading-animations')) {
-				const style = document.createElement('style');
-				style.id = 'loading-animations';
-				style.textContent = `
-					@keyframes spin {
-						0% { transform: rotate(0deg); }
-						100% { transform: rotate(360deg); }
-					}
-					@keyframes fadeIn {
-						from { opacity: 0; }
-						to { opacity: 1; }
-					}
-					@keyframes slideUp {
-						from {
-							opacity: 0;
-							transform: translateY(20px);
-						}
-						to {
-							opacity: 1;
-							transform: translateY(0);
-						}
-					}
+					z-index: 1003;
+					pointer-events: none;
+					max-width: calc(100vw - 32px);
+					animation: pillIn 0.25s ease;
 				`;
-				document.head.appendChild(style);
+				document.body.appendChild(pill);
+			} else {
+				pill.style.animation = 'pillIn 0.25s ease';
 			}
+
+			pill.innerHTML = `
+				<span style="
+					width: 16px; height: 16px; flex-shrink: 0;
+					border: 2px solid var(--border);
+					border-top-color: var(--primary);
+					border-radius: 50%;
+					animation: spin 0.8s linear infinite;
+				"></span>
+				<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${message}</span>
+			`;
 		}
 
 		function hideLoadingState() {
-			const loader = document.getElementById('loading-overlay');
-			if (loader) {
-				loader.style.animation = 'fadeOut 0.3s ease forwards';
-				setTimeout(() => loader.remove(), 300);
-			}
+			const pill = document.getElementById('loading-pill');
+			if (!pill) return;
+			pill.style.animation = 'pillOut 0.25s ease forwards';
+			setTimeout(() => pill.remove(), 250);
 		}
 
 		function showMessage(message, type = 'info') {
@@ -1294,7 +1620,7 @@
 		}
 
 		// 修改locateMe函数以支持重试状态跟踪
-		const originalLocateMe = locateMe;
+		const originalLocateMe = locateMe; /* tracked-below */
 		function locateMe() {
 			lastOperation = { type: 'location', params: null };
 			document.getElementById('retryBtn').style.display = 'none';
@@ -1338,6 +1664,18 @@
 		document.getElementById('searchBtn').onclick = searchLocation;
 		document.getElementById('locateBtn').onclick = locateMe;
 		document.getElementById('retryBtn').onclick = retryLastOperation;
+
+		// Watch-only: 🔍 toggles a compact search field in/out (it is hidden by
+		// default on the watch to keep the bus-stop list as large as possible).
+		const searchToggleBtn = document.getElementById('searchToggleBtn');
+		function setWatchSearch(open) {
+			ctrls.classList.toggle('searching', open);
+			searchToggleBtn.setAttribute('aria-expanded', String(open));
+			if (open) {
+				searchIn.focus();
+			}
+		}
+		searchToggleBtn.onclick = () => setWatchSearch(!ctrls.classList.contains('searching'));
 		document.getElementById('toggleBtn').onclick = () => {
 			ctrls.classList.toggle('hidden');
 			showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
@@ -1351,6 +1689,10 @@
 		};
 
 		function locateMe() {
+			lastOperation = { type: 'location', params: null };
+			const _retryBtn = document.getElementById('retryBtn');
+			if (_retryBtn) _retryBtn.style.display = 'none';
+
 			if (!navigator.geolocation) {
 				handleLocationError({ code: 2 });
 				return;
@@ -1590,6 +1932,8 @@
 			});
 			setUser({ lat, lon });
 			showMessage(`Located: ${displayName}`, 'success');
+			// Collapse the watch search field once a result is applied
+			ctrls.classList.remove('searching');
 		}
 
 		// Enhanced fetchBusStops with caching
@@ -1631,6 +1975,10 @@
 
 		function setUser(pos) {
 			userPos = pos;
+			lastOperation = {
+				type: 'busStops',
+				params: { lat: pos.lat, lon: pos.lon, radius: parseInt(radInput.value) }
+			};
 			if (!userMarker) {
 				userMarker = L.marker([pos.lat, pos.lon], { icon: userIcon })
 					.addTo(map)
@@ -1671,14 +2019,52 @@
 			}
 		}
 
+		// Format a distance in metres into a friendly string (e.g. 850m / 1.2km)
+		function formatDistance(metres) {
+			return metres >= 1000 ? (metres / 1000).toFixed(1) + 'km' : Math.round(metres) + 'm';
+		}
+
+		function stopCode(s) {
+			return s.tags?.ref || s.tags?.['ref:LTA'] || s.id;
+		}
+
+		function arrivalUrl(code) {
+			return 'https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=' + encodeURIComponent(code);
+		}
+
+		// Overpass returns both highway=bus_stop and public_transport=platform nodes,
+		// so the same physical stop can appear twice. Collapse duplicates by stop code,
+		// falling back to rounded coordinates when there is no code.
+		function dedupeStops(stops) {
+			const seen = new Map();
+			stops.forEach(s => {
+				const key = s.tags?.ref
+					? 'ref:' + s.tags.ref
+					: 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+				if (!seen.has(key)) seen.set(key, s);
+			});
+			return Array.from(seen.values());
+		}
+
+		// Keep references to markers so a list row can focus its map marker
+		const stopMarkers = new Map();
+
+		function focusStop(key) {
+			const marker = stopMarkers.get(key);
+			if (!marker) return;
+			map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: true, duration: 0.8 });
+			marker.openPopup();
+		}
+
 		function renderStops() {
 			if (!userPos) return;
 			stopLayer.clearLayers();
+			stopMarkers.clear();
 
 			const radius = +radInput.value;
-			const nearbyStops = busStopsData.filter(s =>
+			const nearbyStops = dedupeStops(busStopsData.filter(s =>
 				map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]) <= radius
-			);
+			));
 
 			// Sort by distance for better UX
 			nearbyStops.sort((a, b) => {
@@ -1687,8 +2073,15 @@
 				return distA - distB;
 			});
 
+			const listEl = document.getElementById('stopList');
+			listEl.innerHTML = '';
+
 			nearbyStops.forEach((s, index) => {
-				const distance = Math.round(map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]));
+				const distance = map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]);
+				const code = stopCode(s);
+				const name = s.tags?.name || 'Bus Stop';
+				const key = s.tags?.ref ? 'ref:' + s.tags.ref : 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+
 				const busIcon = L.divIcon({
 					html: `
 						<div style="
@@ -1699,7 +2092,7 @@
 							display: flex; align-items: center; justify-content: center;
 							color: white; font-weight: bold; font-size: 10px;
 							animation: fadeInScale 0.3s ease;
-						">${s.tags?.ref || s.id}</div>
+						">${code}</div>
 					`,
 					className: 'bus-stop-marker',
 					iconSize: [32, 32],
@@ -1711,16 +2104,16 @@
 						<div style="min-width: 200px;">
 							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
 								<span style="font-size: 1.25rem;">🚌</span>
-								<b style="color: #059669;">${s.tags?.ref || s.id}</b>
+								<b style="color: #059669;">${code}</b>
 							</div>
 							<div style="color: #4b5563; margin-bottom: 8px;">
-								${s.tags?.name || 'Bus Stop'}
+								${name}
 							</div>
 							<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
 								<span style="font-size: 0.875rem; color: #6b7280;">📍</span>
-								<span style="font-size: 0.875rem; color: #6b7280;">${distance}m away</span>
+								<span style="font-size: 0.875rem; color: #6b7280;">${formatDistance(distance)} away</span>
 							</div>
-							<a href="https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=${s.tags?.ref || s.id}"
+							<a href="${arrivalUrl(code)}"
 							   target="_blank"
 							   style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">
 								<span>🕐</span>
@@ -1733,15 +2126,71 @@
 					})
 					.addTo(stopLayer);
 
+				stopMarkers.set(key, marker);
+
+				// List row, synced to the map marker
+				const row = document.createElement('div');
+				row.className = 'stop-item';
+				row.setAttribute('role', 'listitem');
+				row.tabIndex = 0;
+				row.innerHTML = `
+					<span class="stop-code">${code}</span>
+					<span class="stop-info">
+						<span class="stop-name">${name}</span>
+						<span class="stop-distance">${formatDistance(distance)} away</span>
+					</span>
+					<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times →</a>
+				`;
+				// On a watch the map is tiny, so the most useful tap is "view arrival
+				// times"; on larger screens tapping a row focuses its map marker.
+				const isWatch = () => window.matchMedia('(max-width: 250px)').matches;
+				const activateRow = () => {
+					if (isWatch()) {
+						window.open(arrivalUrl(code), '_blank', 'noopener');
+					} else {
+						focusStop(key);
+					}
+				};
+				row.addEventListener('click', (e) => {
+					if (e.target.closest('.stop-times')) return; // let the link work
+					activateRow();
+				});
+				row.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						activateRow();
+					}
+				});
+				listEl.appendChild(row);
+
 				// Staggered animation for markers
 				setTimeout(() => {
-					marker._icon.style.animation = 'fadeInScale 0.5s ease';
+					if (marker._icon) marker._icon.style.animation = 'fadeInScale 0.5s ease';
 				}, index * 50);
 			});
 
-			// Update results counter
+			// Empty state with one-tap "expand radius" action
+			if (nearbyStops.length === 0) {
+				const max = +radInput.max;
+				const next = Math.min(radius + 150, max);
+				listEl.innerHTML = `
+					<div class="stop-list-empty">
+						No bus stops within ${formatDistance(radius)}.
+						${next > radius ? `<br><button id="expandRadiusBtn">Expand to ${next}m</button>` : ''}
+					</div>
+				`;
+				const expandBtn = document.getElementById('expandRadiusBtn');
+				if (expandBtn) {
+					expandBtn.onclick = () => {
+						radInput.value = next;
+						radInput.dispatchEvent(new Event('input'));
+					};
+				}
+			}
+
+			// Update results counter (single source of truth: stops within radius)
 			const counter = document.getElementById('results-counter') || createResultsCounter();
-			counter.textContent = `${nearbyStops.length} bus stops found within ${Math.round(radius)}m`;
+			counter.textContent = `${nearbyStops.length} bus stop${nearbyStops.length === 1 ? '' : 's'} within ${formatDistance(radius)}`;
 		}
 
 		function createResultsCounter() {
