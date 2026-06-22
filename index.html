@@ -190,6 +190,71 @@
 			color: var(--text-light);
 		}
 
+		.search-combobox {
+			position: relative;
+			flex: 1;
+			min-width: 0;
+		}
+
+		.search-combobox input[type="text"] {
+			width: 100%;
+			box-sizing: border-box;
+		}
+
+		.combo-list {
+			position: absolute;
+			top: calc(100% + 6px);
+			left: 0;
+			right: 0;
+			z-index: 1200;
+			display: none;
+			max-height: min(320px, 42vh);
+			overflow-y: auto;
+			padding: 6px;
+			margin: 0;
+			list-style: none;
+			background: #ffffff;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow);
+		}
+
+		.combo-list.open {
+			display: block;
+		}
+
+		.combo-option {
+			width: 100%;
+			padding: 10px 12px;
+			border: 0;
+			border-radius: 8px;
+			background: transparent;
+			color: var(--text);
+			text-align: left;
+			cursor: pointer;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			gap: 8px;
+			align-items: center;
+		}
+
+		.combo-option:hover,
+		.combo-option[aria-selected="true"] {
+			background: #eef2ff;
+		}
+
+		.combo-option strong,
+		.combo-option span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.combo-option span {
+			color: var(--text-light);
+			font-size: 0.75rem;
+		}
+
 		.controls-row button {
 			padding: 12px 20px;
 			border: none;
@@ -512,12 +577,21 @@
 				align-items: stretch;
 			}
 
-			.controls-row>input[type="text"] {
+			.controls-row>.search-combobox {
+				flex: 1;
+				min-width: 0;
+			}
+
+			.controls-row>.search-combobox>input[type="text"] {
 				flex: 1;
 				min-height: 48px;
 				padding: 12px 16px;
 				font-size: 16px; /* Prevent zoom on iOS */
 				border-radius: var(--radius);
+			}
+
+			.combo-list {
+				max-height: 34vh;
 			}
 
 			.controls-row>button {
@@ -967,10 +1041,18 @@
 				display: none;
 			}
 
+			.search-row .search-combobox {
+				min-width: 0;
+			}
+
 			.search-row input[type="text"] {
 				min-height: 32px;
 				padding: 6px 10px;
 				font-size: 16px; /* avoid input zoom */
+			}
+
+			.search-row .combo-list {
+				max-height: 46vh;
 			}
 
 			.search-row button {
@@ -1115,8 +1197,12 @@
 		</div>
 
 		<div class="controls-row search-row">
-			<input type="text" id="searchInput" placeholder="Search for a location..." aria-label="Search for a location"
-				   autocomplete="off" spellcheck="false" />
+			<div class="search-combobox">
+				<input type="text" id="searchInput" placeholder="Search for a location..." aria-label="Search for a location"
+					   autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list"
+					   aria-expanded="false" aria-controls="searchSuggestions" />
+				<div id="searchSuggestions" class="combo-list" role="listbox" aria-label="Search suggestions"></div>
+			</div>
 			<button id="searchBtn" class="btn-primary" aria-label="Search for location">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 					<path
@@ -1706,6 +1792,9 @@
 		const radInput = document.getElementById('radius');
 		const radValue = document.getElementById('radiusValue');
 		const searchIn = document.getElementById('searchInput');
+		const searchSuggestions = document.getElementById('searchSuggestions');
+		let comboOptions = [];
+		let activeComboIndex = -1;
 
 		// Debounced radius input handler for better performance
 		radInput.oninput = () => {
@@ -1784,6 +1873,7 @@
 			}
 
 			console.debug('[Search] Received user query', { query: q });
+			closeSearchSuggestions();
 
 			// Debounce search requests
 			clearTimeout(searchTimeout);
@@ -2201,7 +2291,7 @@
 							const o = JSON.parse(trimmed);
 							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
 								const codes = (o.code || '').toLowerCase().split(/[;,\s]+/).filter(Boolean);
-								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon, _codes: codes });
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon, code: o.code || '', _codes: codes });
 							}
 						} catch (e) { /* skip */ }
 					}
@@ -2217,7 +2307,7 @@
 
 		// --- Local landmark index (places.jsonl) -------------------------------------
 		// SG schools, hospitals, parks and tourist attractions, for offline search.
-		let localPlaces = null; // array of { name, _n (lowercased), lat, lon }
+		let localPlaces = null; // array of { name, _n (lowercased), kind, lat, lon }
 
 		function loadLocalPlaces() {
 			return fetch('./places.jsonl')
@@ -2230,7 +2320,7 @@
 						try {
 							const o = JSON.parse(trimmed);
 							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
-								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon });
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), kind: o.kind || 'place', lat: o.lat, lon: o.lon });
 							}
 						} catch (e) { /* skip */ }
 					}
@@ -2242,6 +2332,138 @@
 				.catch(() => {
 					console.debug('[Local] places.jsonl unavailable');
 				});
+		}
+
+		function addSuggestion(items, seen, suggestion) {
+			if (!suggestion || !suggestion.name) return;
+			const key = `${suggestion.type}:${suggestion.name}:${suggestion.code || ''}`.toLowerCase();
+			if (seen.has(key)) return;
+			seen.add(key);
+			items.push(suggestion);
+		}
+
+		function addNamedSuggestions(items, seen, list, q, type, limit) {
+			if (!list || items.length >= limit) return;
+			const ranked = [
+				...list.filter(item => item._n === q),
+				...list.filter(item => item._n !== q && item._n.startsWith(q)),
+				...list.filter(item => item._n !== q && !item._n.startsWith(q) && item._n.includes(q))
+			];
+
+			for (const item of ranked) {
+				addSuggestion(items, seen, {
+					name: item.name,
+					lat: item.lat,
+					lon: item.lon,
+					type,
+					code: item.code || '',
+					meta: item.kind || type
+				});
+				if (items.length >= limit) return;
+			}
+		}
+
+		function getSearchSuggestions(query) {
+			const q = query.trim().toLowerCase();
+			const limit = 8;
+			const items = [];
+			const seen = new Set();
+			if (q.length < 2) return items;
+
+			if (localStops) {
+				const stopHits = [
+					...localStops.filter(s => (s.tags.ref || '').toLowerCase().startsWith(q)),
+					...localStops.filter(s => (s.tags.name || '').toLowerCase().includes(q) || (s.tags.road || '').toLowerCase().includes(q))
+				];
+
+				for (const stop of stopHits) {
+					addSuggestion(items, seen, {
+						name: stop.tags.name || 'Bus Stop',
+						lat: stop.lat,
+						lon: stop.lon,
+						type: 'bus stop',
+						code: stop.tags.ref || '',
+						meta: stop.tags.road || 'bus stop'
+					});
+					if (items.length >= limit) return items;
+				}
+			}
+
+			if (localMrt) {
+				for (const station of localMrt.filter(s => s._codes.some(code => code.startsWith(q)))) {
+					addSuggestion(items, seen, {
+						name: station.name,
+						lat: station.lat,
+						lon: station.lon,
+						type: 'MRT/LRT',
+						code: station.code || station._codes[0] || '',
+						meta: 'MRT/LRT'
+					});
+					if (items.length >= limit) return items;
+				}
+			}
+
+			addNamedSuggestions(items, seen, localMrt, q, 'MRT/LRT', limit);
+			addNamedSuggestions(items, seen, localMalls, q, 'mall', limit);
+			addNamedSuggestions(items, seen, localPlaces, q, 'place', limit);
+			addNamedSuggestions(items, seen, localStreets, q, 'street', limit);
+
+			return items.slice(0, limit);
+		}
+
+		function closeSearchSuggestions() {
+			comboOptions = [];
+			activeComboIndex = -1;
+			searchSuggestions.classList.remove('open');
+			searchSuggestions.innerHTML = '';
+			searchIn.setAttribute('aria-expanded', 'false');
+			searchIn.removeAttribute('aria-activedescendant');
+		}
+
+		function setActiveComboOption(index) {
+			activeComboIndex = index;
+			const options = searchSuggestions.querySelectorAll('.combo-option');
+			options.forEach((option, optionIndex) => {
+				const selected = optionIndex === activeComboIndex;
+				option.setAttribute('aria-selected', String(selected));
+				if (selected) {
+					searchIn.setAttribute('aria-activedescendant', option.id);
+					option.scrollIntoView({ block: 'nearest' });
+				}
+			});
+			if (activeComboIndex < 0) searchIn.removeAttribute('aria-activedescendant');
+		}
+
+		function selectComboOption(index) {
+			const option = comboOptions[index];
+			if (!option) return false;
+			searchIn.value = option.code && option.type === 'bus stop' ? option.code : option.name;
+			closeSearchSuggestions();
+			performSearch(searchIn.value);
+			return true;
+		}
+
+		function updateSearchSuggestions() {
+			comboOptions = getSearchSuggestions(searchIn.value);
+			activeComboIndex = -1;
+
+			if (!comboOptions.length) {
+				closeSearchSuggestions();
+				return;
+			}
+
+			searchSuggestions.innerHTML = comboOptions.map((item, index) => {
+				const label = item.code ? `${item.code} - ${item.name}` : item.name;
+				return `
+					<button type="button" class="combo-option" id="searchOption${index}" role="option" aria-selected="false" data-index="${index}">
+						<strong>${escapeHtml(label)}</strong>
+						<span>${escapeHtml(item.meta || item.type)}</span>
+					</button>
+				`;
+			}).join('');
+
+			searchSuggestions.classList.add('open');
+			searchIn.setAttribute('aria-expanded', 'true');
 		}
 
 		// Match a {name,_n} list by exact, then starts-with, then contains
@@ -2525,16 +2747,63 @@
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility
+		searchIn.addEventListener('input', updateSearchSuggestions);
+		searchIn.addEventListener('focus', updateSearchSuggestions);
 		searchIn.addEventListener('keydown', function (e) {
+			if (e.key === 'ArrowDown') {
+				if (!comboOptions.length) updateSearchSuggestions();
+				if (comboOptions.length) {
+					e.preventDefault();
+					setActiveComboOption((activeComboIndex + 1) % comboOptions.length);
+				}
+				return;
+			}
+
+			if (e.key === 'ArrowUp') {
+				if (!comboOptions.length) updateSearchSuggestions();
+				if (comboOptions.length) {
+					e.preventDefault();
+					setActiveComboOption(activeComboIndex <= 0 ? comboOptions.length - 1 : activeComboIndex - 1);
+				}
+				return;
+			}
+
 			if (e.key === 'Enter') {
 				e.preventDefault();
+				if (activeComboIndex >= 0 && selectComboOption(activeComboIndex)) return;
 				searchLocation();
+				return;
+			}
+
+			if (e.key === 'Escape' && searchSuggestions.classList.contains('open')) {
+				e.preventDefault();
+				closeSearchSuggestions();
+			}
+		});
+
+		searchSuggestions.addEventListener('pointerdown', function (e) {
+			const option = e.target.closest('.combo-option');
+			if (!option) return;
+			e.preventDefault();
+			selectComboOption(Number(option.dataset.index));
+		});
+
+		document.addEventListener('pointerdown', function (e) {
+			if (!e.target.closest('.search-combobox')) {
+				closeSearchSuggestions();
 			}
 		});
 
 		// Add keyboard navigation for all interactive elements
 		document.addEventListener('keydown', function (e) {
+			if (e.defaultPrevented) return;
+
 			// Escape key to hide controls
+			if (e.key === 'Escape' && searchSuggestions.classList.contains('open')) {
+				closeSearchSuggestions();
+				return;
+			}
+
 			if (e.key === 'Escape' && !ctrls.classList.contains('hidden')) {
 				document.getElementById('toggleBtn').click();
 				document.getElementById('toggleBtn').focus();
