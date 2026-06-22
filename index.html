@@ -80,10 +80,10 @@
 			background: var(--surface);
 			backdrop-filter: blur(20px) saturate(180%);
 			box-shadow: var(--shadow);
-			padding: 20px;
+			padding: 14px;
 			display: flex;
 			flex-direction: column;
-			gap: 16px;
+			gap: 10px;
 			z-index: 1000;
 			transform: translateY(0);
 			transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -113,8 +113,30 @@
 
 		.controls-row {
 			display: flex;
-			gap: 12px;
+			gap: 8px;
 			align-items: center;
+		}
+
+		.search-row {
+			order: 1;
+		}
+
+		.action-row {
+			order: 2;
+			display: grid;
+			grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
+			align-items: stretch;
+		}
+
+		.radius-row {
+			order: 3;
+			display: grid;
+			grid-template-columns: auto minmax(0, 1fr);
+			align-items: center;
+			padding: 10px 12px;
+			background: #f8fafc;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
 		}
 
 		.controls-row label {
@@ -130,8 +152,16 @@
 			color: var(--primary);
 		}
 
+		.radius-label {
+			display: flex;
+			align-items: baseline;
+			gap: 4px;
+		}
+
 		.controls-row input[type="range"] {
 			flex: 1;
+			width: 100%;
+			min-width: 0;
 			height: 6px;
 			-webkit-appearance: none;
 			appearance: none;
@@ -170,10 +200,11 @@
 
 		.controls-row input[type="text"] {
 			flex: 1;
-			padding: 12px 16px;
+			min-height: 48px;
+			padding: 12px 14px;
 			border: 1px solid var(--border);
 			border-radius: var(--radius);
-			font-size: 0.875rem;
+			font-size: 1rem;
 			font-weight: 400;
 			color: var(--text);
 			background: #ffffff;
@@ -256,7 +287,8 @@
 		}
 
 		.controls-row button {
-			padding: 12px 20px;
+			width: 100%;
+			padding: 12px 14px;
 			border: none;
 			border-radius: var(--radius);
 			color: #ffffff;
@@ -269,7 +301,8 @@
 			align-items: center;
 			justify-content: center;
 			gap: 6px;
-			min-height: 44px;
+			min-height: 48px;
+			white-space: nowrap;
 		}
 
 		.btn-primary {
@@ -1191,8 +1224,8 @@
 		<div class="sheet-handle"></div>
 
 		<div class="controls-row radius-row">
-			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">200</span>m</label>
-			<input type="range" id="radius" min="100" max="2000" value="200" step="50" style="width: 65%;"
+			<label for="radius" class="radius-label">Radius <span><span id="radiusValue" aria-live="polite">200</span>m</span></label>
+			<input type="range" id="radius" min="100" max="2000" value="200" step="50"
 				   aria-label="Search radius in meters" aria-describedby="radiusValue" />
 		</div>
 
@@ -1263,6 +1296,17 @@
 		integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 	<script>
 		const DEFAULT = { lat: 1.283, lon: 103.860 };
+		const DEFAULT_RADIUS = 200;
+
+		function zoomForRadius(radius) {
+			const metres = Number(radius) || DEFAULT_RADIUS;
+			if (metres <= 150) return 18;
+			if (metres <= 300) return 17;
+			if (metres <= 500) return 16;
+			if (metres <= 900) return 15;
+			if (metres <= 1400) return 14;
+			return 13;
+		}
 
 		// --- Map tile configuration -------------------------------------------------
 		// The default OpenStreetMap tiles are FREE FOR HOBBY USE ONLY. The OSMF tile
@@ -1305,7 +1349,7 @@
 			doubleClickZoom: true,
 			touchZoom: true,
 			tap: false
-		}).setView([DEFAULT.lat, DEFAULT.lon], 15);
+		}).setView([DEFAULT.lat, DEFAULT.lon], zoomForRadius(DEFAULT_RADIUS));
 		map.attributionControl.setPrefix(false);
 		map.attributionControl.addAttribution(DATA_ATTRIBUTION);
 		L.control.zoom({ position: 'topright' }).addTo(map);
@@ -1317,7 +1361,7 @@
 
 		// Enhanced visual elements
 		const circle = L.circle([DEFAULT.lat, DEFAULT.lon], {
-			radius: 200,
+			radius: DEFAULT_RADIUS,
 			color: '#4f46e5',
 			fillColor: '#4f46e5',
 			fillOpacity: 0.1,
@@ -1796,10 +1840,21 @@
 		let comboOptions = [];
 		let activeComboIndex = -1;
 
+		function syncMapZoomToRadius(animate = true) {
+			const zoom = zoomForRadius(radInput.value);
+			const center = userPos ? [userPos.lat, userPos.lon] : circle.getLatLng();
+			if (animate) {
+				map.flyTo(center, zoom, { animate: true, duration: 0.45 });
+			} else {
+				map.setView(center, zoom, { animate: false });
+			}
+		}
+
 		// Debounced radius input handler for better performance
 		radInput.oninput = () => {
 			radValue.textContent = radInput.value;
 			circle.setRadius(+radInput.value);
+			syncMapZoomToRadius(true);
 
 			// Immediate visual feedback
 			renderStops();
@@ -2148,7 +2203,7 @@
 
 			// Smooth circle transition
 			circle.setLatLng([pos.lat, pos.lon]);
-			map.flyTo([pos.lat, pos.lon], Math.max(map.getZoom(), 15), {
+			map.flyTo([pos.lat, pos.lon], zoomForRadius(radInput.value), {
 				animate: true,
 				duration: 1.5
 			});
