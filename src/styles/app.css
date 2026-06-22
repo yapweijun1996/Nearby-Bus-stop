@@ -658,6 +658,14 @@
 				display: none !important;
 			}
 
+			.controls ~ #map .leaflet-bottom.leaflet-right {
+				bottom: calc(var(--controls-sheet-height, 0px) + 8px);
+			}
+
+			.controls.sheet-expanded ~ #map .leaflet-control-attribution {
+				display: none !important;
+			}
+
 			.controls-row {
 				flex-wrap: nowrap;
 				gap: 8px;

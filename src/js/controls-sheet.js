@@ -14,6 +14,18 @@ export function initControlsSheet({
 		return mobileSheetQuery.matches;
 	}
 
+	function updateControlsHeight() {
+		if (!isMobileSheet()) {
+			document.documentElement.style.removeProperty('--controls-sheet-height');
+			return;
+		}
+
+		document.documentElement.style.setProperty(
+			'--controls-sheet-height',
+			`${Math.ceil(ctrls.getBoundingClientRect().height)}px`
+		);
+	}
+
 	function setSheetState(state) {
 		if (!isMobileSheet()) {
 			ctrls.classList.remove('sheet-collapsed', 'sheet-half', 'sheet-expanded');
@@ -43,7 +55,10 @@ export function initControlsSheet({
 			closeSearchSuggestions();
 		}
 
-		requestAnimationFrame(() => map.invalidateSize());
+		requestAnimationFrame(() => {
+			updateControlsHeight();
+			map.invalidateSize();
+		});
 	}
 
 	function toggleSheetFromHandle() {
@@ -136,11 +151,13 @@ export function initControlsSheet({
 			ctrls.classList.remove('sheet-collapsed', 'sheet-expanded');
 			ctrls.classList.add('sheet-half');
 			showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
+			updateControlsHeight();
 			map.invalidateSize();
 		}
 	}
 
 	mobileSheetQuery.addEventListener?.('change', syncSheetForViewport);
+	new ResizeObserver(updateControlsHeight).observe(ctrls);
 	syncSheetForViewport();
 
 	window.setSheetState = setSheetState;

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sg-nearby-bus-stops-v7';
+const CACHE_VERSION = 'sg-nearby-bus-stops-v8';
 const APP_SHELL = [
   './',
   './index.html',
@@ -38,6 +38,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  const url = new URL(request.url);
+
+  // Do not intercept CDN requests. Cross-origin stylesheet/script responses can
+  // be opaque, and returning an opaque response to a CORS stylesheet request
+  // causes the browser to fail the load.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -73,14 +82,9 @@ self.addEventListener('fetch', event => {
         return cached;
       }
 
-      const url = new URL(request.url);
-      const shouldRuntimeCache =
-        url.origin === self.location.origin ||
-        url.hostname === 'unpkg.com';
-
       return fetch(request)
         .then(response => {
-          if (!shouldRuntimeCache || !response || (response.status !== 200 && response.type !== 'opaque')) {
+          if (!response || response.status !== 200) {
             return response;
           }
 
@@ -88,7 +92,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_VERSION).then(cache => cache.put(request, responseCopy));
           return response;
         })
-        .catch(() => caches.match('./offline.html'));
+        .catch(() => caches.match(request).then(response => response || Response.error()));
     })
   );
 });
