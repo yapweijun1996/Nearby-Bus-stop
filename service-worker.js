@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sg-nearby-bus-stops-v2';
+const CACHE_VERSION = 'sg-nearby-bus-stops-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -47,6 +47,21 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match('./index.html').then(response => response || caches.match('./offline.html')))
+    );
+    return;
+  }
+
+  // Bus-stop dataset: network-first so refreshed data is picked up, with the
+  // cached copy as an offline fallback.
+  if (new URL(request.url).pathname.endsWith('/bus-stops.jsonl')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_VERSION).then(cache => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
