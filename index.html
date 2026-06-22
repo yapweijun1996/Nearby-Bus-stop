@@ -282,8 +282,17 @@
 			font-size: 18px;
 		}
 
+		/* Attribution must stay visible: OSM/tile providers and the Singapore Open
+		   Data Licence both require credit. Keep it subtle but present. */
 		.leaflet-control-attribution {
-			display: none !important;
+			font-size: 0.625rem !important;
+			background: rgba(255, 255, 255, 0.8) !important;
+			color: var(--text-light) !important;
+			padding: 1px 6px !important;
+		}
+
+		.leaflet-control-attribution a {
+			color: var(--neutral-hover) !important;
 		}
 
 		/* Modern Popup Styles */
@@ -1168,16 +1177,55 @@
 		integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 	<script>
 		const DEFAULT = { lat: 1.283, lon: 103.860 };
+
+		// --- Map tile configuration -------------------------------------------------
+		// The default OpenStreetMap tiles are FREE FOR HOBBY USE ONLY. The OSMF tile
+		// policy (https://operations.osmfoundation.org/policies/tiles/) forbids heavy
+		// or commercial use and a business app will be rate-limited / blocked.
+		//
+		// For business use, sign up with a paid tile provider (MapTiler, Mapbox,
+		// Stadia Maps, Thunderforest, ...) and fill in TILE_CONFIG below. Set
+		// `provider: 'custom'`, paste the provider's tile URL template (with your key)
+		// into `url`, and put the provider's required attribution into `attribution`.
+		const TILE_CONFIG = {
+			provider: 'osm', // 'osm' (free, hobby only) | 'custom' (paid, business-safe)
+
+			// Used only when provider === 'custom'. Example (MapTiler):
+			//   url: 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=YOUR_KEY',
+			//   attribution: '© <a href="https://www.maptiler.com/">MapTiler</a> © OpenStreetMap contributors',
+			url: '',
+			attribution: '',
+			maxZoom: 19
+		};
+
+		const TILE_PRESETS = {
+			osm: {
+				url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+				attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				maxZoom: 19
+			}
+		};
+
+		const tile = TILE_CONFIG.provider === 'custom' && TILE_CONFIG.url
+			? TILE_CONFIG
+			: TILE_PRESETS.osm;
+
+		// Bus-stop data attribution (Singapore Open Data Licence) is always required.
+		const DATA_ATTRIBUTION = 'Bus data © <a href="https://datamall.lta.gov.sg/">LTA</a> (Singapore Open Data Licence)';
+
 		const map = L.map('map', {
 			zoomControl: false,
-			attributionControl: false,
+			attributionControl: true,
 			doubleClickZoom: true,
 			touchZoom: true,
 			tap: false
 		}).setView([DEFAULT.lat, DEFAULT.lon], 15);
+		map.attributionControl.setPrefix(false);
+		map.attributionControl.addAttribution(DATA_ATTRIBUTION);
 		L.control.zoom({ position: 'topright' }).addTo(map);
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '© OpenStreetMap contributors',
+		L.tileLayer(tile.url, {
+			attribution: tile.attribution,
+			maxZoom: tile.maxZoom || 19,
 			crossOrigin: true
 		}).addTo(map);
 
@@ -2137,6 +2185,36 @@
 				});
 		}
 
+		// --- Local MRT/LRT station index (mrt.jsonl) ---------------------------------
+		// SG rail stations, searchable by name or station code (e.g. "NS1").
+		let localMrt = null; // array of { name, _n, lat, lon, _codes: [lowercased codes] }
+
+		function loadLocalMrt() {
+			return fetch('./mrt.jsonl')
+				.then(r => r.ok ? r.text() : Promise.reject(new Error('mrt.jsonl not found')))
+				.then(text => {
+					const arr = [];
+					for (const line of text.split('\n')) {
+						const trimmed = line.trim();
+						if (!trimmed) continue;
+						try {
+							const o = JSON.parse(trimmed);
+							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
+								const codes = (o.code || '').toLowerCase().split(/[;,\s]+/).filter(Boolean);
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon, _codes: codes });
+							}
+						} catch (e) { /* skip */ }
+					}
+					if (arr.length) {
+						localMrt = arr;
+						console.debug('[Local] Loaded', arr.length, 'MRT/LRT stations from mrt.jsonl');
+					}
+				})
+				.catch(() => {
+					console.debug('[Local] mrt.jsonl unavailable');
+				});
+		}
+
 		// Match a {name,_n} list by exact, then starts-with, then contains
 		function matchNamed(list, q) {
 			if (!list) return null;
@@ -2159,15 +2237,23 @@
 				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.tags.name };
 			}
 
-			// 2. Shopping mall (a common search destination)
+			// 2. MRT/LRT station — by station code (e.g. "ns1") or name
+			if (localMrt) {
+				const byCode = localMrt.find(s => s._codes.includes(q));
+				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.name };
+				const byStn = matchNamed(localMrt, q);
+				if (byStn) return byStn;
+			}
+
+			// 3. Shopping mall (a common search destination)
 			const mall = matchNamed(localMalls, q);
 			if (mall) return mall;
 
-			// 3. Road name
+			// 4. Road name
 			const street = matchNamed(localStreets, q);
 			if (street) return street;
 
-			// 4. Bus-stop name / road substring
+			// 5. Bus-stop name / road substring
 			if (localStops) {
 				const byName = localStops.find(s =>
 					(s.tags.name || '').toLowerCase().includes(q) ||
@@ -2401,6 +2487,7 @@
 		loadLocalStops(); // bundled bus stops; falls back to Overpass if absent
 		loadLocalStreets(); // bundled street index for offline place search
 		loadLocalMalls(); // bundled shopping-mall index for offline search
+		loadLocalMrt(); // bundled MRT/LRT station index for offline search
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility
