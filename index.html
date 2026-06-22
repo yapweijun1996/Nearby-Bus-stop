@@ -90,6 +90,7 @@
 			border-radius: var(--radius-lg);
 			box-sizing: border-box;
 			border: 1px solid var(--border);
+			min-height: 0;
 		}
 
 		.controls.hidden {
@@ -98,17 +99,39 @@
 		}
 
 		.sheet-handle {
-			width: 36px;
+			width: 64px;
+			height: 24px;
+			padding: 0;
+			background: transparent;
+			border: 0;
+			border-radius: var(--radius-full);
+			margin: -4px auto -6px auto;
+			opacity: 0.7;
+			transition: opacity 0.2s ease, transform 0.2s ease;
+			cursor: grab;
+			touch-action: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex: 0 0 auto;
+		}
+
+		.sheet-handle::before {
+			content: '';
+			width: 38px;
 			height: 4px;
 			background: var(--neutral);
 			border-radius: var(--radius-full);
-			margin: 0 auto -4px auto;
-			opacity: 0.6;
-			transition: opacity 0.2s ease;
 		}
 
-		.sheet-handle:hover {
+		.sheet-handle:hover,
+		.sheet-handle:focus-visible {
 			opacity: 1;
+		}
+
+		.sheet-handle:active {
+			cursor: grabbing;
+			transform: scaleX(1.08);
 		}
 
 		.controls-row {
@@ -594,18 +617,32 @@
 				left: 0;
 				right: 0;
 				bottom: 0;
+				height: auto;
 				max-height: 64vh;
 				padding: 12px;
 				gap: 10px;
 				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 				z-index: 1000;
-				overflow-y: auto;
+				overflow: hidden;
 				box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
 			}
 
 			.controls.hidden {
-				transform: translateY(calc(100% - 60px));
+				transform: translateY(0);
 				opacity: 1;
+			}
+
+			.controls.sheet-collapsed {
+				max-height: none;
+			}
+
+			.controls.sheet-half {
+				max-height: 64vh;
+			}
+
+			.controls.sheet-expanded {
+				height: calc(100dvh - 8px);
+				max-height: calc(100dvh - 8px);
 			}
 
 			.controls-row {
@@ -616,6 +653,7 @@
 
 			.search-row {
 				order: 1;
+				flex: 0 0 auto;
 			}
 
 			.search-row .search-combobox {
@@ -647,11 +685,18 @@
 				max-height: min(260px, 36vh);
 			}
 
+			.controls.sheet-expanded .combo-list {
+				top: calc(100% + 6px);
+				bottom: auto;
+				max-height: min(320px, 40vh);
+			}
+
 			.action-row {
 				order: 2;
 				display: grid;
 				grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
 				gap: 8px;
+				flex: 0 0 auto;
 			}
 
 			.action-row button {
@@ -664,16 +709,38 @@
 
 			.stop-list {
 				order: 3;
+				flex: 1 1 auto;
 				max-height: clamp(96px, 24vh, 220px);
+				min-height: 55px;
 				gap: 7px;
 				padding: 0 1px;
 			}
 
+			.controls.sheet-expanded .stop-list {
+				max-height: none;
+				min-height: 0;
+			}
+
 			.radius-row {
 				order: 4;
+				flex: 0 0 auto;
 				grid-template-columns: 88px minmax(0, 1fr);
 				padding: 9px 10px;
 				gap: 8px;
+			}
+
+			.controls.sheet-collapsed .stop-list,
+			.controls.sheet-collapsed .radius-row {
+				display: none;
+			}
+
+			.controls.sheet-collapsed .action-row {
+				grid-template-columns: minmax(0, 1fr);
+			}
+
+			.controls.sheet-collapsed #toggleBtn,
+			.controls.sheet-collapsed #fullscreenBtn {
+				display: none;
 			}
 
 			.controls-row label {
@@ -682,9 +749,9 @@
 			}
 
 			.sheet-handle {
-				width: 36px;
-				height: 4px;
-				margin: 0 auto 2px auto;
+				width: 68px;
+				height: 26px;
+				margin: -4px auto -2px auto;
 			}
 
 			#showBtn {
@@ -816,8 +883,19 @@
 				overflow-y: auto;
 			}
 
+			.controls.sheet-collapsed {
+				max-height: none;
+				overflow: hidden;
+			}
+
+			.controls.sheet-expanded {
+				height: calc(100dvh - 6px);
+				max-height: calc(100dvh - 6px);
+				overflow: hidden;
+			}
+
 			.controls.hidden {
-				transform: translateY(calc(100% + 32px));
+				transform: translateY(0);
 			}
 
 			.search-row {
@@ -877,10 +955,14 @@
 				max-height: clamp(80px, 22vh, 170px);
 			}
 
+			.controls.sheet-expanded .stop-list {
+				max-height: none;
+			}
+
 			.sheet-handle {
-				width: 36px;
-				height: 4px;
-				margin-bottom: 4px;
+				width: 58px;
+				height: 24px;
+				margin-bottom: -2px;
 			}
 
 			#showBtn {
@@ -1280,8 +1362,9 @@
 <body>
 	<button id="showBtn" aria-label="Show Controls"></button>
 
-	<div class="controls" id="controls">
-		<div class="sheet-handle"></div>
+	<div class="controls sheet-half" id="controls">
+		<button id="sheetHandle" class="sheet-handle" type="button" aria-label="Expand controls" aria-controls="controls"
+				aria-expanded="false"></button>
 
 		<div class="controls-row radius-row">
 			<label for="radius" class="radius-label">Radius <span><span id="radiusValue" aria-live="polite">200</span>m</span></label>
@@ -1893,12 +1976,59 @@
 
 		const ctrls = document.getElementById('controls');
 		const showBtn = document.getElementById('showBtn');
+		const sheetHandle = document.getElementById('sheetHandle');
 		const radInput = document.getElementById('radius');
 		const radValue = document.getElementById('radiusValue');
 		const searchIn = document.getElementById('searchInput');
 		const searchSuggestions = document.getElementById('searchSuggestions');
+		const mobileSheetQuery = window.matchMedia('(max-width: 480px)');
 		let comboOptions = [];
 		let activeComboIndex = -1;
+		let sheetState = 'half';
+
+		function isMobileSheet() {
+			return mobileSheetQuery.matches;
+		}
+
+		function setSheetState(state) {
+			if (!isMobileSheet()) {
+				ctrls.classList.remove('sheet-collapsed', 'sheet-half', 'sheet-expanded');
+				ctrls.classList.add('sheet-half');
+				showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
+				sheetHandle.setAttribute('aria-expanded', 'false');
+				sheetHandle.setAttribute('aria-label', 'Toggle controls');
+				return;
+			}
+
+			sheetState = state;
+			ctrls.classList.remove('hidden', 'sheet-collapsed', 'sheet-half', 'sheet-expanded');
+			ctrls.classList.add(`sheet-${state}`);
+			showBtn.style.display = 'none';
+
+			const expanded = state === 'expanded';
+			sheetHandle.setAttribute('aria-expanded', String(expanded));
+			sheetHandle.setAttribute('aria-label',
+				state === 'expanded' ? 'Collapse controls' : 'Expand controls'
+			);
+			document.getElementById('toggleBtn').setAttribute('aria-expanded', state !== 'collapsed');
+			document.getElementById('toggleBtn').setAttribute('aria-label',
+				state === 'collapsed' ? 'Show more controls' : 'Collapse controls'
+			);
+
+			if (state === 'collapsed') {
+				closeSearchSuggestions();
+			}
+
+			requestAnimationFrame(() => map.invalidateSize());
+		}
+
+		function toggleSheetFromHandle() {
+			if (!isMobileSheet()) {
+				document.getElementById('toggleBtn').click();
+				return;
+			}
+			setSheetState(sheetState === 'expanded' ? 'half' : 'expanded');
+		}
 
 		function syncMapZoomToRadius(animate = true) {
 			const zoom = zoomForRadius(radInput.value);
@@ -1948,7 +2078,54 @@
 			}
 		}
 		searchToggleBtn.onclick = () => setWatchSearch(!ctrls.classList.contains('searching'));
-		showBtn.onclick = () => document.getElementById('toggleBtn').click();
+		showBtn.onclick = () => {
+			if (isMobileSheet()) {
+				setSheetState('half');
+				return;
+			}
+			document.getElementById('toggleBtn').click();
+		};
+
+		let sheetDragStartY = null;
+		let sheetDragMoved = false;
+		sheetHandle.addEventListener('pointerdown', function (e) {
+			sheetDragStartY = e.clientY;
+			sheetDragMoved = false;
+			sheetHandle.setPointerCapture?.(e.pointerId);
+		});
+		sheetHandle.addEventListener('pointermove', function (e) {
+			if (sheetDragStartY === null) return;
+			if (Math.abs(e.clientY - sheetDragStartY) > 8) sheetDragMoved = true;
+		});
+		sheetHandle.addEventListener('pointerup', function (e) {
+			if (sheetDragStartY === null) return;
+			const deltaY = e.clientY - sheetDragStartY;
+			sheetDragStartY = null;
+			sheetHandle.releasePointerCapture?.(e.pointerId);
+
+			if (!isMobileSheet()) {
+				if (!sheetDragMoved) toggleSheetFromHandle();
+				return;
+			}
+
+			if (deltaY < -36) {
+				setSheetState('expanded');
+			} else if (deltaY > 36) {
+				setSheetState(sheetState === 'expanded' ? 'half' : 'collapsed');
+			} else {
+				toggleSheetFromHandle();
+			}
+		});
+		sheetHandle.addEventListener('pointercancel', function () {
+			sheetDragStartY = null;
+			sheetDragMoved = false;
+		});
+		sheetHandle.addEventListener('keydown', function (e) {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				toggleSheetFromHandle();
+			}
+		});
 
 		function locateMe() {
 			lastOperation = { type: 'location', params: null };
@@ -2919,7 +3096,13 @@
 				return;
 			}
 
-			if (e.key === 'Escape' && !ctrls.classList.contains('hidden')) {
+			if (e.key === 'Escape' && isMobileSheet() && sheetState !== 'collapsed') {
+				setSheetState('collapsed');
+				document.getElementById('toggleBtn').focus();
+				return;
+			}
+
+			if (e.key === 'Escape' && !isMobileSheet() && !ctrls.classList.contains('hidden')) {
 				document.getElementById('toggleBtn').click();
 				document.getElementById('toggleBtn').focus();
 			}
@@ -2935,7 +3118,7 @@
 				const lastElement = focusableElements[focusableElements.length - 1];
 
 				// Trap focus within controls when visible
-				if (!ctrls.classList.contains('hidden')) {
+				if (!ctrls.classList.contains('hidden') && !(isMobileSheet() && sheetState === 'collapsed')) {
 					if (e.shiftKey && document.activeElement === firstElement) {
 						e.preventDefault();
 						lastElement.focus();
@@ -2949,6 +3132,11 @@
 
 		// Update ARIA states dynamically
 		document.getElementById('toggleBtn').onclick = () => {
+			if (isMobileSheet()) {
+				setSheetState(sheetState === 'collapsed' ? 'half' : 'collapsed');
+				return;
+			}
+
 			const isHidden = ctrls.classList.contains('hidden');
 			ctrls.classList.toggle('hidden');
 			showBtn.style.display = isHidden ? 'none' : 'flex';
@@ -2969,6 +3157,20 @@
 				? document.exitFullscreen()
 				: document.documentElement.requestFullscreen();
 		};
+
+		function syncSheetForViewport() {
+			if (isMobileSheet()) {
+				setSheetState(sheetState || 'half');
+			} else {
+				ctrls.classList.remove('sheet-collapsed', 'sheet-expanded');
+				ctrls.classList.add('sheet-half');
+				showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
+				map.invalidateSize();
+			}
+		}
+
+		mobileSheetQuery.addEventListener?.('change', syncSheetForViewport);
+		syncSheetForViewport();
 
 		// Add focus indicators for keyboard users
 		const style = document.createElement('style');
