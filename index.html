@@ -750,9 +750,10 @@
 			gap: 8px;
 			max-height: 40vh;
 			overflow-y: auto;
+			overflow-x: hidden;
 			-webkit-overflow-scrolling: touch;
-			margin: -4px -4px 0;
-			padding: 4px;
+			margin: 0;
+			padding: 2px;
 		}
 
 		.stop-list-empty {
@@ -775,23 +776,29 @@
 			min-height: 40px;
 		}
 
+		/* Modern bus-stop row: code badge | name + meta | action. Grid with a
+		   min-width:0 middle column so long names ellipsis instead of forcing
+		   horizontal scroll; box-sizing keeps the 100% width inside the panel. */
 		.stop-item {
-			display: flex;
+			box-sizing: border-box;
+			width: 100%;
+			display: grid;
+			grid-template-columns: auto minmax(0, 1fr) auto;
 			align-items: center;
-			gap: 12px;
-			padding: 10px 12px;
+			column-gap: 12px;
+			padding: 12px;
 			border: 1px solid var(--border);
 			border-radius: var(--radius);
 			background: #fff;
 			cursor: pointer;
-			transition: background 0.15s ease, transform 0.1s ease;
+			transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 			text-align: left;
-			width: 100%;
 			font-family: inherit;
 		}
 
 		.stop-item:hover {
-			background: #f1f5f9;
+			background: #f8fafc;
+			box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 		}
 
 		.stop-item:active {
@@ -805,48 +812,60 @@
 
 		.stop-code {
 			flex-shrink: 0;
-			min-width: 44px;
-			height: 36px;
-			padding: 0 8px;
-			border-radius: 8px;
+			min-width: 48px;
+			height: 40px;
+			padding: 0 10px;
+			border-radius: 10px;
 			background: linear-gradient(135deg, #059669, #10b981);
 			color: #fff;
 			font-weight: 700;
-			font-size: 0.8125rem;
+			font-size: 0.875rem;
+			letter-spacing: 0.02em;
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
 		}
 
 		.stop-info {
-			flex: 1;
 			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 3px;
 		}
 
+		/* Main heading: the stop name, up to two lines then ellipsis */
 		.stop-name {
-			font-size: 0.875rem;
-			font-weight: 500;
+			font-size: 0.9375rem;
+			font-weight: 600;
+			line-height: 1.3;
 			color: var(--text);
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow: hidden;
+		}
+
+		/* Sub heading: distance + walk time */
+		.stop-distance {
+			font-size: 0.75rem;
+			color: var(--text-light);
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
 
-		.stop-distance {
-			font-size: 0.75rem;
-			color: var(--text-light);
-			margin-top: 2px;
-		}
-
 		.stop-times {
 			flex-shrink: 0;
+			white-space: nowrap;
 			color: var(--primary);
 			font-size: 0.75rem;
 			font-weight: 600;
 			text-decoration: none;
-			padding: 6px 8px;
-			border-radius: 8px;
+			padding: 7px 10px;
+			border-radius: 9px;
 			background: rgba(79, 70, 229, 0.08);
+			transition: background 0.15s ease;
 		}
 
 		.stop-times:hover {
@@ -916,7 +935,7 @@
 				pointer-events: none;
 			}
 
-			/* Radius is fixed at the 150m default (walking distance) to free space */
+			/* Radius is fixed at the 200m default (walking distance) to free space */
 			.sheet-handle,
 			.radius-row,
 			#retryBtn {
@@ -1081,8 +1100,8 @@
 		<div class="sheet-handle"></div>
 
 		<div class="controls-row radius-row">
-			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">150</span>m</label>
-			<input type="range" id="radius" min="100" max="2000" value="150" step="50" style="width: 65%;"
+			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">200</span>m</label>
+			<input type="range" id="radius" min="100" max="2000" value="200" step="50" style="width: 65%;"
 				   aria-label="Search radius in meters" aria-describedby="radiusValue" />
 		</div>
 
@@ -1164,7 +1183,7 @@
 
 		// Enhanced visual elements
 		const circle = L.circle([DEFAULT.lat, DEFAULT.lon], {
-			radius: 150,
+			radius: 200,
 			color: '#4f46e5',
 			fillColor: '#4f46e5',
 			fillOpacity: 0.1,
@@ -2018,6 +2037,11 @@
 			return metres >= 1000 ? (metres / 1000).toFixed(1) + 'km' : Math.round(metres) + 'm';
 		}
 
+		// Rough walking time at ~80 m/min (about 4.8 km/h)
+		function walkMin(metres) {
+			return Math.max(1, Math.round(metres / 80));
+		}
+
 		// The LTA bus-stop code (a 5-digit ref). Returns null when OSM has no usable code.
 		function stopCode(s) {
 			return s.tags?.ref || s.tags?.['ref:LTA'] || null;
@@ -2082,6 +2106,7 @@
 			const hasCode = isValidBusCode(code);
 			const badge = escapeHtml(code || '🚏');
 			const safeName = escapeHtml(s.tags?.name || 'Bus Stop');
+			const distLabel = formatDistance(distance) + ' · ' + walkMin(distance) + ' min walk';
 			const key = s.tags?.ref ? 'ref:' + s.tags.ref : 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
 
 			const busIcon = L.divIcon({
@@ -2115,7 +2140,7 @@
 						<div style="color: #4b5563; margin-bottom: 8px;">${safeName}</div>
 						<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
 							<span style="font-size: 0.875rem; color: #6b7280;">📍</span>
-							<span style="font-size: 0.875rem; color: #6b7280;">${formatDistance(distance)} away</span>
+							<span style="font-size: 0.875rem; color: #6b7280;">${distLabel}</span>
 						</div>
 						${timesLink}
 					</div>
@@ -2133,7 +2158,7 @@
 				<span class="stop-code">${badge}</span>
 				<span class="stop-info">
 					<span class="stop-name">${safeName}</span>
-					<span class="stop-distance">${formatDistance(distance)} away</span>
+					<span class="stop-distance">${distLabel}</span>
 				</span>
 				${hasCode ? `<a class="stop-times" href="${arrivalUrl(code)}" target="_blank" rel="noopener">Times →</a>` : ''}
 			`;
