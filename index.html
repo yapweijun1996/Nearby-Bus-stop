@@ -1,400 +1,1865 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Get Current Location and Search Address</title>
-		<script>
-			window.onload = function() {
-				const originalLog = console.log;
-				console.log = function(...args) {
-					originalLog.apply(console, args);
-					if (window.parent) {
-						window.parent.postMessage(args.join(" "), "*");
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes" />
+	<title>SG Nearby Bus Stops</title>
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" crossorigin="" />
+	<style>
+		:root {
+			--primary: #4f46e5;
+			--primary-hover: #3730a3;
+			--primary-active: #312e81;
+			--success: #059669;
+			--success-hover: #047857;
+			--neutral: #64748b;
+			--neutral-hover: #475569;
+			--surface: rgba(255, 255, 255, 0.95);
+			--surface-dark: rgba(30, 41, 59, 0.95);
+			--border: rgba(148, 163, 184, 0.2);
+			--text: #1e293b;
+			--text-light: #64748b;
+			--shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+			--radius: 12px;
+			--radius-lg: 16px;
+			--radius-full: 9999px;
+		}
+
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+			height: 100%;
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			overflow: hidden;
+			touch-action: pan-x pan-y pinch-zoom;
+			background: #f8fafc;
+		}
+
+		#map {
+			height: 100%;
+			touch-action: pan-x pan-y pinch-zoom;
+		}
+
+		.controls {
+			position: absolute;
+			bottom: env(safe-area-inset-bottom);
+			left: 16px;
+			right: 16px;
+			width: auto;
+			max-height: 70%;
+			background: var(--surface);
+			backdrop-filter: blur(20px) saturate(180%);
+			box-shadow: var(--shadow);
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			z-index: 1000;
+			transform: translateY(0);
+			transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+			border-radius: var(--radius-lg);
+			box-sizing: border-box;
+			border: 1px solid var(--border);
+		}
+
+		.controls.hidden {
+			transform: translateY(calc(100% + 32px));
+			opacity: 0;
+		}
+
+		.sheet-handle {
+			width: 36px;
+			height: 4px;
+			background: var(--neutral);
+			border-radius: var(--radius-full);
+			margin: 0 auto -4px auto;
+			opacity: 0.6;
+			transition: opacity 0.2s ease;
+		}
+
+		.sheet-handle:hover {
+			opacity: 1;
+		}
+
+		.controls-row {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+		}
+
+		.controls-row label {
+			font-weight: 500;
+			color: var(--text);
+			font-size: 0.875rem;
+			white-space: nowrap;
+			min-width: fit-content;
+		}
+
+		#radiusValue {
+			font-weight: 600;
+			color: var(--primary);
+		}
+
+		.controls-row input[type="range"] {
+			flex: 1;
+			height: 6px;
+			-webkit-appearance: none;
+			appearance: none;
+			background: #e2e8f0;
+			border-radius: var(--radius-full);
+			outline: none;
+			transition: background 0.2s ease;
+		}
+
+		.controls-row input[type="range"]::-webkit-slider-thumb {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 20px;
+			height: 20px;
+			background: var(--primary);
+			border-radius: 50%;
+			cursor: pointer;
+			box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+			transition: all 0.2s ease;
+		}
+
+		.controls-row input[type="range"]::-webkit-slider-thumb:hover {
+			transform: scale(1.1);
+			box-shadow: 0 4px 8px rgba(79, 70, 229, 0.4);
+		}
+
+		.controls-row input[type="range"]::-moz-range-thumb {
+			width: 20px;
+			height: 20px;
+			background: var(--primary);
+			border-radius: 50%;
+			cursor: pointer;
+			border: none;
+			box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+		}
+
+		.controls-row input[type="text"] {
+			flex: 1;
+			padding: 12px 16px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			font-size: 0.875rem;
+			font-weight: 400;
+			color: var(--text);
+			background: #ffffff;
+			transition: all 0.2s ease;
+			outline: none;
+		}
+
+		.controls-row input[type="text"]:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+		}
+
+		.controls-row input[type="text"]::placeholder {
+			color: var(--text-light);
+		}
+
+		.controls-row button {
+			padding: 12px 20px;
+			border: none;
+			border-radius: var(--radius);
+			color: #ffffff;
+			font-size: 0.875rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			outline: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			min-height: 44px;
+		}
+
+		.btn-primary {
+			background: var(--primary);
+			box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+		}
+
+		.btn-primary:hover {
+			background: var(--primary-hover);
+			transform: translateY(-1px);
+			box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+		}
+
+		.btn-primary:active {
+			background: var(--primary-active);
+			transform: translateY(0);
+			box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+		}
+
+		.btn-success {
+			background: var(--success);
+			box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+		}
+
+		.btn-success:hover {
+			background: var(--success-hover);
+			transform: translateY(-1px);
+			box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+		}
+
+		.btn-toggle {
+			background: var(--neutral);
+			box-shadow: 0 2px 4px rgba(100, 116, 139, 0.2);
+		}
+
+		.btn-toggle:hover {
+			background: var(--neutral-hover);
+			transform: translateY(-1px);
+			box-shadow: 0 4px 8px rgba(100, 116, 139, 0.3);
+		}
+
+		#showBtn {
+			position: absolute;
+			bottom: calc(16px + env(safe-area-inset-bottom));
+			right: 16px;
+			z-index: 1001;
+			width: 56px;
+			height: 56px;
+			background: var(--primary);
+			color: #ffffff;
+			border: none;
+			border-radius: var(--radius-full);
+			font-size: 16px;
+			font-weight: 600;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			box-shadow: var(--shadow);
+			transition: all 0.2s ease;
+		}
+
+		#showBtn:hover {
+			background: var(--primary-hover);
+			transform: translateY(-2px);
+			box-shadow: 0 12px 24px -4px rgba(79, 70, 229, 0.4);
+		}
+
+		#showBtn:active {
+			transform: translateY(-1px);
+		}
+
+		#showBtn::before {
+			content: '▲';
+			font-size: 18px;
+		}
+
+		.leaflet-control-attribution {
+			display: none !important;
+		}
+
+		/* Modern Popup Styles */
+		.leaflet-popup {
+			margin-bottom: 20px !important;
+		}
+
+		.leaflet-popup-content-wrapper {
+			background: var(--surface) !important;
+			border-radius: var(--radius) !important;
+			box-shadow: var(--shadow) !important;
+			border: 1px solid var(--border) !important;
+			backdrop-filter: blur(20px) saturate(180%) !important;
+			padding: 0 !important;
+			overflow: hidden !important;
+		}
+
+		.leaflet-popup-content {
+			margin: 0 !important;
+			padding: 16px !important;
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
+			line-height: 1.5 !important;
+			color: var(--text) !important;
+			min-width: 180px !important;
+		}
+
+		.leaflet-popup-content b {
+			display: block !important;
+			font-size: 1.125rem !important;
+			font-weight: 600 !important;
+			color: var(--primary) !important;
+			margin-bottom: 4px !important;
+		}
+
+		.leaflet-popup-content br+text {
+			color: var(--text-light) !important;
+			font-size: 0.875rem !important;
+		}
+
+		.leaflet-popup-content a {
+			display: inline-flex !important;
+			align-items: center !important;
+			gap: 6px !important;
+			background: var(--primary) !important;
+			color: #ffffff !important;
+			text-decoration: none !important;
+			padding: 8px 12px !important;
+			border-radius: 8px !important;
+			font-size: 0.8125rem !important;
+			font-weight: 500 !important;
+			margin-top: 8px !important;
+			transition: all 0.2s ease !important;
+			box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2) !important;
+		}
+
+		.leaflet-popup-content a:hover {
+			background: var(--primary-hover) !important;
+			transform: translateY(-1px) !important;
+			box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3) !important;
+		}
+
+		.leaflet-popup-content a::after {
+			content: '→' !important;
+			font-weight: 600 !important;
+		}
+
+		.leaflet-popup-tip-container {
+			filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)) !important;
+		}
+
+		.leaflet-popup-tip {
+			background: var(--surface) !important;
+			border: 1px solid var(--border) !important;
+			border-top: none !important;
+			border-left: none !important;
+		}
+
+		.leaflet-popup-close-button {
+			position: absolute !important;
+			top: 8px !important;
+			right: 8px !important;
+			width: 24px !important;
+			height: 24px !important;
+			display: flex !important;
+			align-items: center !important;
+			justify-content: center !important;
+			background: rgba(100, 116, 139, 0.1) !important;
+			border-radius: 50% !important;
+			color: var(--text-light) !important;
+			font-size: 16px !important;
+			font-weight: 400 !important;
+			text-decoration: none !important;
+			transition: all 0.2s ease !important;
+			z-index: 1001 !important;
+		}
+
+		.leaflet-popup-close-button:hover {
+			background: rgba(100, 116, 139, 0.2) !important;
+			color: var(--text) !important;
+			transform: scale(1.1) !important;
+		}
+
+		/* Modern Zoom Controls */
+		.leaflet-control-zoom {
+			border: none !important;
+			border-radius: var(--radius) !important;
+			overflow: hidden !important;
+			box-shadow: var(--shadow) !important;
+			backdrop-filter: blur(20px) saturate(180%) !important;
+		}
+
+		.leaflet-control-zoom a {
+			background: var(--surface) !important;
+			color: var(--text) !important;
+			border: 1px solid var(--border) !important;
+			border-radius: 0 !important;
+			width: 40px !important;
+			height: 40px !important;
+			display: flex !important;
+			align-items: center !important;
+			justify-content: center !important;
+			font-size: 18px !important;
+			font-weight: 500 !important;
+			text-decoration: none !important;
+			transition: all 0.2s ease !important;
+		}
+
+		.leaflet-control-zoom a:hover {
+			background: var(--primary) !important;
+			color: #ffffff !important;
+			transform: scale(1.05) !important;
+		}
+
+		.leaflet-control-zoom a:first-child {
+			border-top-left-radius: var(--radius) !important;
+			border-top-right-radius: var(--radius) !important;
+			border-bottom: none !important;
+		}
+
+		.leaflet-control-zoom a:last-child {
+			border-bottom-left-radius: var(--radius) !important;
+			border-bottom-right-radius: var(--radius) !important;
+		}
+
+		@media (min-height: 800px) {
+			.controls {
+				max-height: 35%;
+			}
+		}
+
+		@media (orientation: landscape) {
+			.controls {
+				max-height: 50%;
+			}
+		}
+
+		@media (max-width: 768px) {
+			.controls {
+				left: 12px;
+				right: 12px;
+				padding: 16px;
+				gap: 12px;
+			}
+
+			.controls-row {
+				gap: 8px;
+			}
+
+			.controls-row button {
+				padding: 10px 16px;
+				font-size: 0.8125rem;
+				min-height: 40px;
+			}
+
+			.controls-row input[type="text"] {
+				padding: 6px 10px;
+				font-size: 0.75rem;
+			}
+
+			.controls-row input[type="range"] {
+				height: 4px;
+			}
+
+			.controls-row input[type="range"]::-webkit-slider-thumb {
+				width: 14px;
+				height: 14px;
+			}
+
+			.controls-row input[type="range"]::-moz-range-thumb {
+				width: 14px;
+				height: 14px;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.controls {
+				left: 0;
+				right: 0;
+				bottom: 0;
+				max-height: 70vh;
+				padding: 16px;
+				gap: 12px;
+				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+				z-index: 1000;
+				overflow-y: auto;
+				box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+			}
+
+			.controls.hidden {
+				transform: translateY(calc(100% - 60px));
+				opacity: 1;
+			}
+
+			.controls-row {
+				flex-wrap: nowrap;
+				gap: 8px;
+				align-items: stretch;
+			}
+
+			.controls-row>input[type="text"] {
+				flex: 1;
+				min-height: 48px;
+				padding: 12px 16px;
+				font-size: 16px; /* Prevent zoom on iOS */
+				border-radius: var(--radius);
+			}
+
+			.controls-row>button {
+				flex-shrink: 0;
+				min-height: 48px;
+				padding: 12px 16px;
+				font-size: 0.875rem;
+				min-width: 48px;
+				border-radius: var(--radius);
+			}
+
+			.controls-row label {
+				font-size: 0.875rem;
+				margin-bottom: 8px;
+				display: block;
+			}
+
+			.sheet-handle {
+				width: 36px;
+				height: 4px;
+				margin: 0 auto 8px auto;
+			}
+
+			#showBtn {
+				width: 56px;
+				height: 56px;
+				font-size: 16px;
+				bottom: calc(16px + env(safe-area-inset-bottom));
+				right: 16px;
+				z-index: 1001;
+			}
+
+			#showBtn::before {
+				font-size: 18px !important;
+			}
+
+			/* Larger zoom controls for mobile */
+			.leaflet-control-zoom a {
+				width: 48px !important;
+				height: 48px !important;
+				font-size: 20px !important;
+			}
+
+			/* Better popup sizing for mobile */
+			.leaflet-popup-content {
+				font-size: 0.875rem !important;
+				line-height: 1.6 !important;
+			}
+		}
+
+		/* Visual Enhancement Animations */
+		@keyframes pulse {
+			0% {
+				transform: scale(0.95);
+				box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+			}
+			70% {
+				transform: scale(1);
+				box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+			}
+			100% {
+				transform: scale(0.95);
+				box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+			}
+		}
+
+		@keyframes fadeInScale {
+			from {
+				opacity: 0;
+				transform: scale(0.8);
+			}
+			to {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
+
+		@keyframes slideInRight {
+			from {
+				opacity: 0;
+				transform: translateX(100%);
+			}
+			to {
+				opacity: 1;
+				transform: translateX(0);
+			}
+		}
+
+		@keyframes slideOutRight {
+			from {
+				opacity: 1;
+				transform: translateX(0);
+			}
+			to {
+				opacity: 0;
+				transform: translateX(100%);
+			}
+		}
+
+		/* Enhanced map interactions */
+		.leaflet-marker-icon.user-marker {
+			animation: pulse 2s infinite;
+		}
+
+		.leaflet-popup-content {
+			animation: fadeInScale 0.3s ease;
+		}
+
+		/* Smooth radius slider */
+		#radius {
+			transition: all 0.3s ease;
+		}
+
+		#radius:hover {
+			transform: scaleY(1.2);
+		}
+
+		/* Enhanced button interactions */
+		.controls-row button {
+			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		.controls-row button:active {
+			transform: scale(0.98);
+		}
+
+		/* Ultra-small screens (e.g., 333x155) */
+		@media (max-width: 350px) {
+			#results-counter {
+				top: 8px !important;
+				left: 8px !important;
+				right: auto !important;
+				transform: none !important;
+				font-size: 0.75rem !important;
+				padding: 4px 8px !important;
+				max-width: calc(100vw - 70px) !important;
+				white-space: nowrap !important;
+				overflow: hidden !important;
+				text-overflow: ellipsis !important;
+			}
+			.controls {
+				left: 0;
+				right: 0;
+				bottom: 0;
+				max-height: 90%;
+				padding: 12px;
+				gap: 8px;
+				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+				z-index: 1000;
+				overflow-y: auto;
+			}
+
+			.controls.hidden {
+				transform: translateY(calc(100% + 32px));
+			}
+
+			.controls-row {}
+
+			.controls-row:last-child {
+				flex-direction: row;
+				flex-wrap: wrap;
+				justify-content: space-between;
+			}
+
+			.controls-row:last-child button {
+				flex: 1 1 auto;
+				min-width: 70px;
+				margin: 2px;
+			}
+
+			.controls-row label {
+				font-size: 0.8125rem;
+				margin-bottom: 4px;
+			}
+
+			.controls-row input[type="text"] {
+				padding: 10px 14px;
+				font-size: 0.8125rem;
+			}
+
+			.controls-row button {
+				padding: 6px 10px;
+				font-size: 0.75rem;
+				min-height: 36px;
+				gap: 4px;
+			}
+
+			.controls-row button svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			.sheet-handle {
+				width: 36px;
+				height: 4px;
+				margin-bottom: 4px;
+			}
+
+			#showBtn {
+				width: 48px;
+				height: 48px;
+				font-size: 14px;
+				bottom: calc(12px + env(safe-area-inset-bottom));
+				right: 12px;
+				z-index: 1001;
+			}
+
+			#showBtn::before {
+				font-size: 16px !important;
+			}
+
+			/* Smaller zoom controls for ultra-small screens */
+			.leaflet-control-zoom a {
+				width: 40px !important;
+				height: 40px !important;
+				font-size: 18px !important;
+			}
+
+			/* Compact popups for small screens */
+			.leaflet-popup-content {
+				padding: 14px !important;
+				min-width: 160px !important;
+			}
+
+			.leaflet-popup-content b {
+				font-size: 1.0625rem !important;
+			}
+
+			.leaflet-popup-content a {
+				padding: 8px 12px !important;
+				font-size: 0.8125rem !important;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<button id="showBtn" aria-label="Show Controls"></button>
+
+	<div class="controls" id="controls">
+		<div class="sheet-handle"></div>
+
+		<div class="controls-row">
+			<label for="radius">Radius: <span id="radiusValue" aria-live="polite">500</span>m</label>
+			<input type="range" id="radius" min="100" max="2000" value="500" step="100" style="width: 65%;"
+				   aria-label="Search radius in meters" aria-describedby="radiusValue" />
+		</div>
+
+		<div class="controls-row">
+			<input type="text" id="searchInput" placeholder="Search for a location..." aria-label="Search for a location"
+				   autocomplete="off" spellcheck="false" />
+			<button id="searchBtn" class="btn-primary" aria-label="Search for location">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path
+						d="M21 21L16.514 16.506M19 10.5C19 15.194 15.194 19 10.5 19S2 15.194 2 10.5 5.806 2 10.5 2 19 5.806 19 10.5Z"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+				<span>Search</span>
+			</button>
+		</div>
+
+		<div class="controls-row">
+			<button id="locateBtn" class="btn-primary" aria-label="Get current location">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"
+						stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+				</svg>
+				<span>Locate Me</span>
+			</button>
+			<button id="retryBtn" class="btn-primary" aria-label="Retry API requests" style="display: none;">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path d="M4 4V9H4.58152M20 20V15H19.4185M15.9385 9.5L19.4185 6M19.4185 6L16 6M19.4185 6L20 6M8.06152 14.5L4.58152 18M4.58152 18L8 18M4.58152 18L4 18"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+				<span>Retry</span>
+			</button>
+			<button id="toggleBtn" class="btn-toggle" aria-label="Toggle controls panel visibility" aria-expanded="true">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+						stroke-linejoin="round" />
+				</svg>
+				<span>Hide</span>
+			</button>
+			<button id="fullscreenBtn" class="btn-success" aria-label="Toggle fullscreen mode" aria-pressed="false">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path
+						d="M8 3H5C3.89543 3 3 3.89543 3 5V8M21 8V5C21 3.89543 20.1046 3 19 3H16M16 21H19C20.1046 21 21 20.1046 21 19V16M3 16V19C3 20.1046 3.89543 21 5 21H8"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+				<span>Fullscreen</span>
+			</button>
+		</div>
+	</div>
+
+	<div id="map"></div>
+
+	<script src="https://unpkg.com/leaflet/dist/leaflet.js" crossorigin=""></script>
+	<script>
+		const DEFAULT = { lat: 1.283, lon: 103.860 };
+		const map = L.map('map', {
+			zoomControl: false,
+			attributionControl: false,
+			doubleClickZoom: true,
+			touchZoom: true,
+			tap: false
+		}).setView([DEFAULT.lat, DEFAULT.lon], 15);
+		L.control.zoom({ position: 'topright' }).addTo(map);
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '© OpenStreetMap contributors',
+			crossOrigin: true
+		}).addTo(map);
+
+		// Enhanced visual elements
+		const circle = L.circle([DEFAULT.lat, DEFAULT.lon], {
+			radius: 500,
+			color: '#4f46e5',
+			fillColor: '#4f46e5',
+			fillOpacity: 0.1,
+			weight: 2,
+			dashArray: '10, 10'
+		}).addTo(map);
+
+		const stopLayer = L.layerGroup().addTo(map);
+		let userMarker = null, userPos = null, busStopsData = [], isLoadingBusStops = false;
+
+		// Performance optimization: Debounce radius changes
+		let radiusTimeout, searchTimeout;
+		const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+		const SEARCH_RESULT_LIMIT = 20;
+		const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+		const SEARCH_BOUNDING_BOX = {
+			south: 1.15,
+			north: 1.48,
+			west: 103.55,
+			east: 104.1
+		};
+		const busStopsCache = new Map();
+
+		// Enhanced retry and fallback system
+		let retryCount = 0;
+		const MAX_RETRIES = 3;
+		const RETRY_DELAYS = [1000, 2000, 4000]; // Progressive delays
+		let lastApiCall = 0;
+		const API_RATE_LIMIT = 1000; // Minimum 1 second between API calls
+
+		function escapeQueryForRegex(query) {
+			return query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\$&');
+		}
+
+		function buildOverpassSearchQuery(query) {
+			const trimmed = query.trim().slice(0, 80);
+			const tokens = trimmed.split(/\s+/).filter(Boolean);
+
+			let pattern = '.*';
+			if (tokens.length) {
+				const regexTokens = tokens.map(token => {
+					const escaped = escapeQueryForRegex(token);
+					if (token.length > 3) {
+						return `${escaped}\\w*`;
 					}
-				};
-				
-				const originalErrorLog = console.error;
-				console.error = function(...args) {
-					originalErrorLog.apply(console, args);
-					if (window.parent) {
-						window.parent.postMessage(args.join(" "), "*");
-					}
-				};
+					return escaped;
+				});
+				pattern = `.*${regexTokens.join('.*')}.*`;
+			}
+
+			const safePattern = pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+			const { south, west, north, east } = SEARCH_BOUNDING_BOX;
+			const body = `
+				[out:json][timeout:25];
+				(
+				  node["name"~"${safePattern}", i](${south}, ${west}, ${north}, ${east});
+				  way["name"~"${safePattern}", i](${south}, ${west}, ${north}, ${east});
+				  relation["name"~"${safePattern}", i](${south}, ${west}, ${north}, ${east});
+				);
+				out center ${SEARCH_RESULT_LIMIT};
+			`;
+
+			return {
+				body: body.trim(),
+				pattern,
+				tokens
 			};
-		</script>
-		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-		<style>
-			* {
-				box-sizing: border-box;
-				margin: 0;
-				padding: 0;
+		}
+
+		function extractCoordinates(item) {
+			if (!item) return null;
+			if (typeof item.lat === 'number' && typeof item.lon === 'number') {
+				return { lat: item.lat, lon: item.lon };
 			}
-			body {
-				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-				background: #f9f9f9;
-				color: #333;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				min-height: 100vh;
-				line-height: 1.6;
-				padding-bottom: 40px;
+			if (item.center && typeof item.center.lat === 'number' && typeof item.center.lon === 'number') {
+				return { lat: item.center.lat, lon: item.center.lon };
 			}
-			header {
-				background: #2c3e50;
-				color: #ecf0f1;
-				width: 100%;
-				padding: 20px 10px;
-				text-align: center;
-				box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-			}
-			header h1 {
-				font-size: 1.8em;
-			}
-			#display {
-				width: 90%;
-				max-width: 800px;
-				margin-bottom: 20px;
-			}
-			#controls {
-				margin: 15px 0;
-				text-align: center;
-			}
-			#controls input[type="text"] {
-				width: 70%;
-				padding: 8px;
-				border: 1px solid #ccc;
-				border-radius: 4px;
-				font-size: 16px;
-			}
-			#controls button {
-				padding: 9px 15px;
-				margin-left: 8px;
-				border: none;
-				border-radius: 4px;
-				background: #3498db;
-				color: #fff;
-				font-size: 16px;
-				cursor: pointer;
-				transition: background 0.3s ease;
-			}
-			#controls button:hover {
-				background: #2980b9;
-			}
-			#location {
-				background: #fff;
-				padding: 15px;
-				margin: 10px 0;
-				border-radius: 5px;
-				box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-				font-size: 16px;
-				position: relative;
-				overflow: hidden;
-				transition: background-color 0.5s ease;
-			}
-			#location.loading {
-				background-color: #eaf4ff;
-			}
-			.spinner {
-				border: 4px solid #f3f3f3;
-				border-top: 4px solid #3498db;
-				border-radius: 50%;
-				width: 30px;
-				height: 30px;
-				animation: spin 1s linear infinite;
-				position: absolute;
-				right: 15px;
-				top: 15px;
-			}
-			@keyframes spin {
-				0% { transform: rotate(0deg); }
-				100% { transform: rotate(360deg); }
-			}
-			#map {
-				width: 100%;
-				height: 400px;
-				border: 2px solid #3498db;
-				border-radius: 5px;
-				box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-				margin-bottom: 20px;
-				transition: opacity 0.5s ease;
-			}
-			.skeleton {
-				height: 20px;
-				background: #ddd;
-				margin: 5px 0;
-				border-radius: 3px;
-				width: 80%;
-				animation: pulse 1.5s infinite;
-			}
-			@keyframes pulse {
-				0% { opacity: 1; }
-				50% { opacity: 0.4; }
-				100% { opacity: 1; }
-			}
-			.update-animation {
-				animation: highlight 1s ease-out;
-			}
-			@keyframes highlight {
-				0% { background-color: #ffffcc; }
-				100% { background-color: transparent; }
-			}
-			@media (max-width: 600px) {
-				#map, #location {
-					width: 95%;
-				}
-				#controls input[type="text"] {
-					width: 60%;
+			if (Array.isArray(item.geometry) && item.geometry.length) {
+				const first = item.geometry[0];
+				if (typeof first.lat === 'number' && typeof first.lon === 'number') {
+					return { lat: first.lat, lon: first.lon };
 				}
 			}
-		</style>
-		<script>
-			var currentLatitude, currentLongitude, busStopsData = null, mapInstance = null;
-			
-			// Set default coordinates to Singapore Marina Bay Sands
-			var defaultLat = 1.2834;
-			var defaultLon = 103.8607;
-			
-			// Utility function to add update animation
-			function animateUpdate(element) {
-				element.classList.add('update-animation');
-				setTimeout(function(){
-					element.classList.remove('update-animation');
-				}, 1000);
+
+			return null;
+		}
+
+		function normalizeOverpassElements(elements) {
+			if (!Array.isArray(elements) || elements.length === 0) {
+				return null;
 			}
-			
-			// Function to fetch locality using BigDataCloud API
-			function fetchLocality(lat, lon) {
-				fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
-				.then(function(response) { return response.json(); })
-				.then(function(data) {
-					var locality = data.locality || 'Unknown';
-					var locationDiv = document.getElementById('location');
-					locationDiv.innerHTML += '<br><strong>Locality:</strong> ' + locality;
-					animateUpdate(locationDiv);
-				})
-				.catch(function(error) {
-					console.error('Error fetching locality:', error);
-					document.getElementById('location').innerHTML += '<br><strong>Locality:</strong> Unable to fetch';
-				});
-			}
-			
-			// Function to fetch nearby bus stops using Overpass API
-			function fetchBusStops(lat, lon, callback) {
-				var query = '[out:json][timeout:25];\n' +
-				'(\n' +
-				'  node["highway"="bus_stop"](around:1000, ' + lat + ', ' + lon + ');\n' +
-				'  node["public_transport"="platform"](around:1000, ' + lat + ', ' + lon + ');\n' +
-				');\n' +
-				'out body;\n' +
-				'>;\n' +
-				'out skel qt;';
-				var url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
-				fetch(url)
-				.then(function(response) { return response.json(); })
-				.then(function(data) {
-					if (data.elements.length === 0) {
-						document.getElementById('location').innerHTML += '<br>No bus stops found nearby.';
-					}
-					busStopsData = data.elements;
-					if (typeof callback === "function") {
-						callback();
-					}
-				})
-				.catch(function(error) {
-					console.error('Error fetching bus stops:', error);
-					document.getElementById('location').innerHTML += '<br>Unable to fetch bus stops.';
-					if (typeof callback === "function") {
-						callback();
-					}
-				});
-			}
-			
-			// Function to initialize the Leaflet map and add markers with smooth transitions
-			function initializeMap(lat, lon) {
-				if (mapInstance) {
-					mapInstance.remove();
+
+			const candidates = elements.map(item => {
+				const coords = extractCoordinates(item);
+				if (!coords) {
+					return null;
 				}
-				mapInstance = L.map('map').setView([lat, lon], 15);
-				L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-					attribution: '© OpenStreetMap contributors'
-				}).addTo(mapInstance);
-				var userMarker = L.marker([lat, lon]).addTo(mapInstance);
-				userMarker.bindPopup('Selected location').openPopup();
-				if (busStopsData) {
-					busStopsData.forEach(function(stop) {
-						var marker = L.marker([stop.lat, stop.lon]).addTo(mapInstance);
-						var busStopInfo = '';
-						var busStopInfoUrl = "https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=";
-						if (stop.tags) {
-							busStopInfo = (stop.tags.ref ? "<a href='" + busStopInfoUrl + stop.tags.ref + "' target='_blank'>" + stop.tags.ref + "</a>" : '') + (stop.tags.name ? '<br>' + stop.tags.name : '');
-						}
-						busStopInfo = busStopInfo || 'Bus stop';
-						marker.bindPopup(busStopInfo);
-					});
+
+				const tags = item.tags || {};
+				const locationName = tags.name || tags['name:en'] || tags['addr:full'] || tags['addr:housename'] || tags['addr:street'];
+				let score = 0;
+				if (tags['addr:housenumber']) score += 3;
+				if (tags['addr:street']) score += 2;
+				if (tags.amenity) score += 1;
+				if (item.type === 'node') score += 1;
+
+				return {
+					lat: coords.lat,
+					lon: coords.lon,
+					name: locationName || 'Location',
+					osmType: item.type,
+					osmId: item.id,
+					score
+				};
+			}).filter(Boolean);
+
+			if (!candidates.length) {
+				return null;
+			}
+
+			candidates.sort((a, b) => b.score - a.score);
+			const best = candidates[0];
+			return {
+				location: {
+					lat: best.lat,
+					lon: best.lon,
+					name: best.name,
+					osmType: best.osmType,
+					osmId: best.osmId
+				},
+				matches: candidates.length
+			};
+		}
+		const userIcon = L.divIcon({
+			html: `
+				<div style="
+					width: 20px; height: 20px; border-radius: 50%; background: #4f46e5;
+					border: 3px solid white; box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+					animation: pulse 2s infinite;
+				"></div>
+			`,
+			className: 'user-marker',
+			iconSize: [20, 20],
+			iconAnchor: [10, 10]
+		});
+
+		function fetchBusStops(lat, lon, radius, callback) {
+			// Prevent duplicate API calls
+			if (isLoadingBusStops) {
+				if (typeof callback === "function") {
+					callback();
 				}
-				var mapDiv = document.getElementById('map');
-				mapDiv.style.opacity = 0;
-				setTimeout(function() {
-					mapDiv.style.opacity = 1;
-				}, 300);
+				return;
 			}
-			
-			// Geolocation functions
-			function showPosition(position) {
-				currentLatitude = position.coords.latitude;
-				currentLongitude = position.coords.longitude;
-				var locationDiv = document.getElementById('location');
-				locationDiv.classList.add('loading');
-				locationDiv.innerHTML = '<strong>Latitude:</strong> ' + currentLatitude + '<br><strong>Longitude:</strong> ' + currentLongitude;
-				fetchLocality(currentLatitude, currentLongitude);
-				fetchBusStops(currentLatitude, currentLongitude, function() {
-					initializeMap(currentLatitude, currentLongitude);
-					locationDiv.classList.remove('loading');
-				});
+
+			// Rate limiting check
+			const now = Date.now();
+			if (now - lastApiCall < API_RATE_LIMIT) {
+				setTimeout(() => fetchBusStops(lat, lon, radius, callback), API_RATE_LIMIT - (now - lastApiCall));
+				return;
 			}
-			
-			function showError(error) {
-				var message;
-				switch (error.code) {
-					case error.PERMISSION_DENIED:
-					message = "User denied the request for Geolocation. Showing default location: Singapore Marina Bay Sands.";
-					break;
-					case error.POSITION_UNAVAILABLE:
-					message = "Location information is unavailable. Showing default location: Singapore Marina Bay Sands.";
-					break;
-					case error.TIMEOUT:
-					message = "The request to get user location timed out. Showing default location: Singapore Marina Bay Sands.";
-					break;
-					default:
-					message = "An unknown error occurred. Showing default location: Singapore Marina Bay Sands.";
-					break;
+			lastApiCall = now;
+
+			isLoadingBusStops = true;
+			retryCount = 0;
+			showLoadingState('Fetching bus stop data... (Attempt 1/' + MAX_RETRIES + ')');
+
+			executeFetchWithRetry(lat, lon, radius, callback);
+		}
+
+		function executeFetchWithRetry(lat, lon, radius, callback) {
+			const query = '[out:json][timeout:25];\n' +
+			'(\n' +
+			'  node["highway"="bus_stop"](around:' + radius + ', ' + lat + ', ' + lon + ');\n' +
+			'  node["public_transport"="platform"](around:' + radius + ', ' + lat + ', ' + lon + ');\n' +
+			');\n' +
+			'out body;\n' +
+			'>;\n' +
+			'out skel qt;';
+
+			const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+
+			fetch(url)
+			.then(function(response) {
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
-				var locationDiv = document.getElementById('location');
-				locationDiv.innerHTML = message + '<br><strong>Latitude:</strong> ' + defaultLat + '<br><strong>Longitude:</strong> ' + defaultLon;
-				fetchLocality(defaultLat, defaultLon);
-				fetchBusStops(defaultLat, defaultLon, function() {
-					initializeMap(defaultLat, defaultLon);
-					locationDiv.classList.remove('loading');
-				});
-			}
-			
-			// Function to get current location using browser geolocation
-			function getCurrentLocation() {
-				if (navigator.geolocation) {
-					var options = {
-						enableHighAccuracy: true,
-						timeout: 5000,
-						maximumAge: 0
-					};
-					navigator.geolocation.getCurrentPosition(showPosition, showError, options);
+				return response.json();
+			})
+			.then(function(data) {
+				isLoadingBusStops = false;
+				retryCount = 0;
+				hideLoadingState();
+
+				if (data.elements.length === 0) {
+					showMessage('No bus stops found in the specified area', 'warning');
 				} else {
-					var locationDiv = document.getElementById('location');
-					locationDiv.innerHTML = "Geolocation is not supported by this browser. Showing default location: Singapore Marina Bay Sands.";
-					fetchLocality(defaultLat, defaultLon);
-					fetchBusStops(defaultLat, defaultLon, function() {
-						initializeMap(defaultLat, defaultLon);
-						locationDiv.classList.remove('loading');
+					showMessage(`Found ${data.elements.length} bus stops`, 'success');
+				}
+
+				busStopsData = data.elements;
+				if (typeof callback === "function") {
+					callback();
+				}
+			})
+			.catch(function(error) {
+				console.error('API 请求失败:', error);
+				retryCount++;
+
+				if (retryCount < MAX_RETRIES) {
+					const delay = RETRY_DELAYS[retryCount - 1];
+					showLoadingState(`Retrying... (${retryCount}/${MAX_RETRIES})`);
+
+					setTimeout(() => {
+						executeFetchWithRetry(lat, lon, radius, callback);
+					}, delay);
+				} else {
+					isLoadingBusStops = false;
+					hideLoadingState();
+					handleApiFailure(error, lat, lon, radius, callback);
+				}
+			});
+		}
+
+		function handleApiFailure(error, lat, lon, radius, callback) {
+			console.warn('所有重试尝试均失败，使用备用方案:', error);
+
+			// 显示重试按钮
+			const retryBtn = document.getElementById('retryBtn');
+			if (retryBtn) {
+				retryBtn.style.display = 'flex';
+			}
+
+			// 尝试使用缓存数据作为fallback
+			const cacheKey = `${lat},${lon},${radius}`;
+			const cached = busStopsCache.get(cacheKey);
+
+			if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION * 2) {
+				console.debug('使用缓存数据作为fallback');
+				showMessage('Using cached data to display bus stops (API temporarily unavailable)', 'warning');
+				busStopsData = cached.data;
+				if (typeof callback === "function") {
+					callback();
+				}
+				return;
+			}
+
+			// 如果没有缓存，显示友好错误信息
+			showMessage('Bus stop data is temporarily unavailable. Please try again later or check your network connection.', 'error');
+
+			if (typeof callback === "function") {
+				callback();
+			}
+		}
+
+		function showLoadingState(message) {
+			// Enhanced full-screen loading overlay
+			hideLoadingState(); // Remove any existing loader
+
+			const overlay = document.createElement('div');
+			overlay.id = 'loading-overlay';
+			overlay.style.cssText = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: rgba(0, 0, 0, 0.6);
+				backdrop-filter: blur(4px);
+				z-index: 9999;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				animation: fadeIn 0.3s ease;
+			`;
+
+			overlay.innerHTML = `
+				<div style="
+					background: var(--surface);
+					padding: 32px;
+					border-radius: var(--radius-lg);
+					text-align: center;
+					box-shadow: var(--shadow);
+					border: 1px solid var(--border);
+					max-width: 300px;
+					animation: slideUp 0.3s ease;
+				">
+					<div style="
+						width: 48px;
+						height: 48px;
+						border: 3px solid var(--border);
+						border-top: 3px solid var(--primary);
+						border-radius: 50%;
+						animation: spin 1s linear infinite;
+						margin: 0 auto 16px;
+					"></div>
+					<div style="color: var(--text); font-weight: 500; margin-bottom: 8px;">${message}</div>
+					<div style="color: var(--text-light); font-size: 0.875rem;">Please wait...</div>
+				</div>
+			`;
+
+			document.body.appendChild(overlay);
+
+			// Add CSS animations if not already present
+			if (!document.getElementById('loading-animations')) {
+				const style = document.createElement('style');
+				style.id = 'loading-animations';
+				style.textContent = `
+					@keyframes spin {
+						0% { transform: rotate(0deg); }
+						100% { transform: rotate(360deg); }
+					}
+					@keyframes fadeIn {
+						from { opacity: 0; }
+						to { opacity: 1; }
+					}
+					@keyframes slideUp {
+						from {
+							opacity: 0;
+							transform: translateY(20px);
+						}
+						to {
+							opacity: 1;
+							transform: translateY(0);
+						}
+					}
+				`;
+				document.head.appendChild(style);
+			}
+		}
+
+		function hideLoadingState() {
+			const loader = document.getElementById('loading-overlay');
+			if (loader) {
+				loader.style.animation = 'fadeOut 0.3s ease forwards';
+				setTimeout(() => loader.remove(), 300);
+			}
+		}
+
+		function showMessage(message, type = 'info') {
+			// Enhanced message system with different types
+			hideMessage(); // Remove any existing message
+
+			const messageDiv = document.createElement('div');
+			messageDiv.id = 'message-popup';
+
+			const colors = {
+				info: { bg: '#4f46e5', icon: 'ℹ️' },
+				success: { bg: '#059669', icon: '✅' },
+				warning: { bg: '#d97706', icon: '⚠️' },
+				error: { bg: '#dc2626', icon: '❌' }
+			};
+
+			const color = colors[type] || colors.info;
+
+			messageDiv.style.cssText = `
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				background: ${color.bg};
+				color: white;
+				padding: 16px 20px;
+				border-radius: var(--radius);
+				font-size: 0.875rem;
+				z-index: 1002;
+				box-shadow: var(--shadow);
+				max-width: 320px;
+				cursor: pointer;
+				animation: slideInRight 0.3s ease;
+				display: flex;
+				align-items: flex-start;
+				gap: 12px;
+			`;
+
+			messageDiv.innerHTML = `
+				<span style="font-size: 1.125rem; flex-shrink: 0;">${color.icon}</span>
+				<span style="flex: 1; line-height: 1.5;">${message}</span>
+				<button onclick="hideMessage()" style="
+					background: none;
+					border: none;
+					color: white;
+					font-size: 1.25rem;
+					cursor: pointer;
+					padding: 0;
+					margin-left: 8px;
+					opacity: 0.8;
+				">&times;</button>
+			`;
+
+			document.body.appendChild(messageDiv);
+
+			// Auto-hide after 5 seconds for info/success, 8 seconds for warnings/errors
+			const autoHideDelay = (type === 'error' || type === 'warning') ? 8000 : 5000;
+			setTimeout(() => {
+				if (document.getElementById('message-popup')) {
+					hideMessage();
+				}
+			}, autoHideDelay);
+
+			// Click to dismiss
+			messageDiv.onclick = (e) => {
+				if (e.target === messageDiv) {
+					hideMessage();
+				}
+			};
+		}
+
+		function hideMessage() {
+			const message = document.getElementById('message-popup');
+			if (message) {
+				message.style.animation = 'slideOutRight 0.3s ease forwards';
+				setTimeout(() => message.remove(), 300);
+			}
+		}
+
+		// Enhanced error handling for different scenarios
+		function handleLocationError(error) {
+			const messages = {
+				1: 'Location access denied. Please enable location permissions and try again.',
+				2: 'Location information unavailable. Please check your device settings.',
+				3: 'Location request timed out. Please try again.'
+			};
+			showMessage(messages[error.code] || 'Unable to get your location. Please try again.', 'error');
+		}
+
+		function handleSearchError() {
+			showMessage('Search failed. Please check your internet connection and try again.', 'error');
+		}
+
+		function handleNetworkError() {
+			showMessage('Network error. Please check your connection and try again.', 'error');
+		}
+
+		// 离线检测和恢复机制
+		function isOnline() {
+			return navigator.onLine;
+		}
+
+		function showOfflineMessage() {
+			showMessage('Network offline detected, will use cached data', 'warning');
+		}
+
+		// Listen for network status changes
+		window.addEventListener('online', function() {
+			console.debug('[Network] Connection restored');
+			showMessage('Network connection restored', 'success');
+
+			// Show retry button when network is restored
+			const retryBtn = document.getElementById('retryBtn');
+			if (retryBtn) {
+				retryBtn.style.display = 'flex';
+			}
+		});
+
+		window.addEventListener('offline', function() {
+			console.debug('[Network] Connection lost');
+			showOfflineMessage();
+		});
+
+		// 存储最后的操作状态用于重试
+		let lastOperation = {
+			type: null, // 'location' or 'busStops'
+			params: null
+		};
+
+		function retryLastOperation() {
+			const retryBtn = document.getElementById('retryBtn');
+			if (!retryBtn) return;
+
+			if (lastOperation.type === 'location' && lastOperation.params) {
+				console.debug('[Retry] Retrying location operation');
+				locateMe();
+			} else if (lastOperation.type === 'busStops' && lastOperation.params) {
+				console.debug('[Retry] Retrying bus stops fetch');
+				const { lat, lon, radius } = lastOperation.params;
+				fetchBusStops(lat, lon, radius, renderStops);
+			}
+
+			retryBtn.style.display = 'none';
+		}
+
+		// 修改locateMe函数以支持重试状态跟踪
+		const originalLocateMe = locateMe;
+		function locateMe() {
+			lastOperation = { type: 'location', params: null };
+			document.getElementById('retryBtn').style.display = 'none';
+			originalLocateMe();
+		}
+
+		// 修改setUser函数以支持重试状态跟踪
+		const originalSetUser = setUser;
+		function setUser(pos) {
+			lastOperation = {
+				type: 'busStops',
+				params: { lat: pos.lat, lon: pos.lon, radius: parseInt(document.getElementById('radius').value) }
+			};
+			originalSetUser(pos);
+		}
+
+		const ctrls = document.getElementById('controls');
+		const showBtn = document.getElementById('showBtn');
+		const radInput = document.getElementById('radius');
+		const radValue = document.getElementById('radiusValue');
+		const searchIn = document.getElementById('searchInput');
+
+		// Debounced radius input handler for better performance
+		radInput.oninput = () => {
+			radValue.textContent = radInput.value;
+			circle.setRadius(+radInput.value);
+
+			// Immediate visual feedback
+			renderStops();
+
+			// Debounce API calls
+			clearTimeout(radiusTimeout);
+			radiusTimeout = setTimeout(() => {
+				if (userPos && !isLoadingBusStops) {
+					const cacheKey = `${userPos.lat},${userPos.lon},${radInput.value}`;
+					fetchBusStopsWithCache(userPos.lat, userPos.lon, +radInput.value, renderStops, cacheKey);
+				}
+			}, 300); // 300ms debounce
+		};
+
+		document.getElementById('searchBtn').onclick = searchLocation;
+		document.getElementById('locateBtn').onclick = locateMe;
+		document.getElementById('retryBtn').onclick = retryLastOperation;
+		document.getElementById('toggleBtn').onclick = () => {
+			ctrls.classList.toggle('hidden');
+			showBtn.style.display = ctrls.classList.contains('hidden') ? 'flex' : 'none';
+			map.invalidateSize();
+		};
+		showBtn.onclick = () => document.getElementById('toggleBtn').click();
+		document.getElementById('fullscreenBtn').onclick = () => {
+			document.fullscreenElement
+				? document.exitFullscreen()
+				: document.documentElement.requestFullscreen();
+		};
+
+		function locateMe() {
+			if (!navigator.geolocation) {
+				handleLocationError({ code: 2 });
+				return;
+			}
+
+			showLoadingState('Getting your location...');
+			navigator.geolocation.getCurrentPosition(
+				pos => {
+					hideLoadingState();
+					setUser({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+					showMessage('Location acquired successfully!', 'success');
+				},
+				(error) => {
+					hideLoadingState();
+					handleLocationError(error);
+				},
+				{
+					enableHighAccuracy: true,
+					timeout: 10000,
+					maximumAge: 300000 // 5 minutes
+				}
+			);
+		}
+
+		function searchLocation() {
+			const q = searchIn.value.trim();
+			if (!q) {
+				console.warn('[Search] Empty query submitted');
+				showMessage('Please enter a search term', 'warning');
+				return;
+			}
+
+			console.debug('[Search] Received user query', { query: q });
+
+			// Debounce search requests
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				console.debug('[Search] Debounced search triggered', { query: q });
+				performSearch(q);
+			}, 500);
+		}
+
+		function performSearch(query) {
+			const trimmed = query.trim();
+			if (!trimmed) {
+				console.warn('[Search] performSearch invoked with empty query after trimming');
+				return;
+			}
+
+			console.debug('[Search] Executing search', { query: trimmed });
+			showLoadingState('Searching for location...');
+
+			const cacheKey = `search_${trimmed.toLowerCase()}`;
+			let cachedEntry = null;
+
+			// 尝试读取缓存
+			try {
+				const cached = localStorage.getItem(cacheKey);
+				if (cached) {
+					cachedEntry = JSON.parse(cached);
+				}
+			} catch (error) {
+				console.warn('[Search] Failed to read cache', { query: trimmed, error });
+			}
+
+			// 检查缓存是否有效
+			if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_DURATION) {
+				hideLoadingState();
+				console.debug('[Search] Cache hit', {
+					query: trimmed,
+					pattern: cachedEntry.pattern,
+					ageMs: Date.now() - cachedEntry.timestamp
+				});
+				processSearchResult(cachedEntry.data, {
+					source: 'cache',
+					query: trimmed,
+					pattern: cachedEntry.pattern
+				});
+				return;
+			}
+
+			if (cachedEntry) {
+				console.debug('[Search] Cache expired', {
+					query: trimmed,
+					pattern: cachedEntry.pattern,
+					ageMs: Date.now() - cachedEntry.timestamp
+				});
+			}
+
+			// 执行搜索请求（带重试机制）
+			executeSearchWithRetry(trimmed, cacheKey, cachedEntry);
+		}
+
+		function executeSearchWithRetry(query, cacheKey, cachedEntry) {
+			const overpassQuery = buildOverpassSearchQuery(query);
+			console.debug('[Search] Prepared Overpass query', {
+				query: query,
+				regexPattern: overpassQuery.pattern,
+				tokens: overpassQuery.tokens,
+				boundingBox: SEARCH_BOUNDING_BOX
+			});
+
+			const url = `${OVERPASS_ENDPOINT}?data=${encodeURIComponent(overpassQuery.body)}`;
+			console.debug('[Search] Overpass request URL', { url });
+
+			fetch(url)
+				.then(response => {
+					if (!response.ok) {
+						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					}
+					return response.json();
+				})
+				.then(data => {
+					hideLoadingState();
+
+					// 处理Overpass API的busy状态
+					if (data.remark && data.remark.includes('busy')) {
+						console.warn('[Search] Overpass busy', { query: query, remark: data.remark });
+						showMessage('Search service is busy. Please try again in a moment.', 'warning');
+
+						// 如果有缓存，回退到缓存结果
+						if (cachedEntry) {
+							setTimeout(() => {
+								processSearchResult(cachedEntry.data, {
+									source: 'expired_cache',
+									query: query,
+									pattern: cachedEntry.pattern
+								});
+							}, 2000);
+						}
+						return;
+					}
+
+					const elements = Array.isArray(data.elements) ? data.elements : [];
+					console.debug('[Search] Overpass response received', {
+						query: query,
+						matches: elements.length,
+						regexPattern: overpassQuery.pattern
 					});
+
+					if (elements.length === 0) {
+						showMessage('Location not found. Please try a more specific search term', 'warning');
+						return;
+					}
+
+					const normalized = normalizeOverpassElements(elements);
+					if (!normalized) {
+						console.warn('[Search] No valid matches from Overpass', {
+							query: query,
+							regexPattern: overpassQuery.pattern,
+							tokens: overpassQuery.tokens
+						});
+						showMessage('No valid location found. Please try a more specific search term', 'warning');
+						return;
+					}
+
+					const { location, matches } = normalized;
+
+					// 缓存搜索结果
+					try {
+						localStorage.setItem(cacheKey, JSON.stringify({
+							data: location,
+							timestamp: Date.now(),
+							pattern: overpassQuery.pattern
+						}));
+						console.debug('[Search] Cached result', {
+							query: query,
+							regexPattern: overpassQuery.pattern
+						});
+					} catch (error) {
+						console.warn('[Search] Failed to cache result', {
+							query: query,
+							regexPattern: overpassQuery.pattern,
+							error
+						});
+					}
+
+					processSearchResult(location, {
+						source: 'overpass',
+						query: query,
+						matches,
+						pattern: overpassQuery.pattern
+					});
+				})
+				.catch(error => {
+					console.error('[Search] Request failed', {
+						query: query,
+						regexPattern: overpassQuery.pattern,
+						error
+					});
+
+					// 如果有缓存，回退到缓存结果
+					if (cachedEntry) {
+						hideLoadingState();
+						console.debug('[Search] Fallback to expired cache', {
+							query: query,
+							pattern: cachedEntry.pattern,
+							ageMs: Date.now() - cachedEntry.timestamp
+						});
+						showMessage('Search service temporarily unavailable, using cached results', 'warning');
+						processSearchResult(cachedEntry.data, {
+							source: 'expired_cache',
+							query: query,
+							pattern: cachedEntry.pattern
+						});
+						return;
+					}
+
+					// 没有缓存时的错误处理
+					hideLoadingState();
+					handleSearchError();
+				});
+		}
+
+		function processSearchResult(result, meta = {}) {
+			if (!result) {
+				console.warn('[Search] Empty result received', meta);
+				showMessage('Location not found. Please try a more specific search term', 'warning');
+				return;
+			}
+
+			const lat = Number(result.lat);
+			const lon = Number(result.lon);
+			if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+				console.warn('[Search] Invalid coordinates in result', { result, meta });
+				showMessage('Location not found. Please try a more specific search term', 'warning');
+				return;
+			}
+
+			const displayName = result.name || 'Location';
+			console.debug('[Search] Applying search result', {
+				query: meta.query,
+				source: meta.source,
+				matches: meta.matches,
+				lat,
+				lon
+			});
+			setUser({ lat, lon });
+			showMessage(`Located: ${displayName}`, 'success');
+		}
+
+		// Enhanced fetchBusStops with caching
+		function fetchBusStopsWithCache(lat, lon, radius, callback, cacheKey) {
+			// Check cache first
+			const cached = busStopsCache.get(cacheKey);
+			if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+				busStopsData = cached.data;
+				if (typeof callback === "function") {
+					callback();
+				}
+				return;
+			}
+
+			fetchBusStops(lat, lon, radius, function() {
+				// Cache the result
+				busStopsCache.set(cacheKey, {
+					data: busStopsData,
+					timestamp: Date.now()
+				});
+
+				// Limit cache size
+				if (busStopsCache.size > 50) {
+					const firstKey = busStopsCache.keys().next().value;
+					busStopsCache.delete(firstKey);
+				}
+
+				if (typeof callback === "function") {
+					callback();
+				}
+			});
+		}
+
+		// Memory cleanup on page unload
+		window.addEventListener('beforeunload', () => {
+			clearTimeout(radiusTimeout);
+			clearTimeout(searchTimeout);
+		});
+
+		function setUser(pos) {
+			userPos = pos;
+			if (!userMarker) {
+				userMarker = L.marker([pos.lat, pos.lon], { icon: userIcon })
+					.addTo(map)
+					.bindPopup('<div style="text-align: center;"><b>📍 Your Location</b><br>Searching for nearby bus stops...</div>')
+					.openPopup();
+			} else {
+				userMarker.setLatLng([pos.lat, pos.lon]);
+				userMarker.bindPopup('<div style="text-align: center;"><b>📍 Your Location</b><br>Location updated</div>').openPopup();
+			}
+
+			// Smooth circle transition
+			circle.setLatLng([pos.lat, pos.lon]);
+			map.flyTo([pos.lat, pos.lon], Math.max(map.getZoom(), 15), {
+				animate: true,
+				duration: 1.5
+			});
+
+			renderStops();
+
+			// Only fetch bus stops if not already loading
+			if (!isLoadingBusStops) {
+				fetchBusStops(pos.lat, pos.lon, +radInput.value, function() {
+					renderStops();
+				});
+			}
+		}
+
+		function loadStops() {
+			const p = new URLSearchParams(window.location.search);
+			const lat = parseFloat(p.get('lat')),
+				lon = parseFloat(p.get('lon'));
+			if (!isNaN(lat) && !isNaN(lon)) {
+				// Use URL parameters if provided
+				setUser({ lat, lon });
+			} else {
+				// Otherwise try to get user location or use default
+				locateMe();
+			}
+		}
+
+		function renderStops() {
+			if (!userPos) return;
+			stopLayer.clearLayers();
+
+			const radius = +radInput.value;
+			const nearbyStops = busStopsData.filter(s =>
+				map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]) <= radius
+			);
+
+			// Sort by distance for better UX
+			nearbyStops.sort((a, b) => {
+				const distA = map.distance([a.lat, a.lon], [userPos.lat, userPos.lon]);
+				const distB = map.distance([b.lat, b.lon], [userPos.lat, userPos.lon]);
+				return distA - distB;
+			});
+
+			nearbyStops.forEach((s, index) => {
+				const distance = Math.round(map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]));
+				const busIcon = L.divIcon({
+					html: `
+						<div style="
+							width: 32px; height: 32px; border-radius: 50%;
+							background: linear-gradient(135deg, #059669, #10b981);
+							border: 2px solid white;
+							box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+							display: flex; align-items: center; justify-content: center;
+							color: white; font-weight: bold; font-size: 10px;
+							animation: fadeInScale 0.3s ease;
+						">${s.tags?.ref || s.id}</div>
+					`,
+					className: 'bus-stop-marker',
+					iconSize: [32, 32],
+					iconAnchor: [16, 16]
+				});
+
+				const marker = L.marker([s.lat, s.lon], { icon: busIcon })
+					.bindPopup(`
+						<div style="min-width: 200px;">
+							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+								<span style="font-size: 1.25rem;">🚌</span>
+								<b style="color: #059669;">${s.tags?.ref || s.id}</b>
+							</div>
+							<div style="color: #4b5563; margin-bottom: 8px;">
+								${s.tags?.name || 'Bus Stop'}
+							</div>
+							<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
+								<span style="font-size: 0.875rem; color: #6b7280;">📍</span>
+								<span style="font-size: 0.875rem; color: #6b7280;">${distance}m away</span>
+							</div>
+							<a href="https://yapweijun1996.github.io/SG-Bus-Arrival-Time-By-Bus-Code/?busId=${s.tags?.ref || s.id}"
+							   target="_blank"
+							   style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">
+								<span>🕐</span>
+								View Times
+							</a>
+						</div>
+					`, {
+						maxWidth: 250,
+						closeButton: true
+					})
+					.addTo(stopLayer);
+
+				// Staggered animation for markers
+				setTimeout(() => {
+					marker._icon.style.animation = 'fadeInScale 0.5s ease';
+				}, index * 50);
+			});
+
+			// Update results counter
+			const counter = document.getElementById('results-counter') || createResultsCounter();
+			counter.textContent = `${nearbyStops.length} bus stops found within ${Math.round(radius)}m`;
+		}
+
+		function createResultsCounter() {
+			const counter = document.createElement('div');
+			counter.id = 'results-counter';
+			counter.style.cssText = `
+				position: absolute;
+				top: 16px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: var(--surface);
+				color: var(--text);
+				padding: 8px 16px;
+				border-radius: var(--radius);
+				font-size: 0.875rem;
+				font-weight: 500;
+				box-shadow: var(--shadow);
+				border: 1px solid var(--border);
+				z-index: 1000;
+				opacity: 0;
+				transition: opacity 0.3s ease;
+			`;
+			map.getContainer().appendChild(counter);
+
+			// Show counter after a short delay
+			setTimeout(() => {
+				counter.style.opacity = '1';
+			}, 500);
+
+			return counter;
+		}
+
+		loadStops();
+
+		// Enhanced keyboard navigation and accessibility
+		searchIn.addEventListener('keydown', function (e) {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				searchLocation();
+			}
+		});
+
+		// Add keyboard navigation for all interactive elements
+		document.addEventListener('keydown', function (e) {
+			// Escape key to hide controls
+			if (e.key === 'Escape' && !ctrls.classList.contains('hidden')) {
+				document.getElementById('toggleBtn').click();
+				document.getElementById('toggleBtn').focus();
+			}
+
+			// Tab navigation enhancement
+			if (e.key === 'Tab') {
+				// Ensure proper focus management
+				const focusableElements = ctrls.querySelectorAll(
+					'input, button, [tabindex]:not([tabindex="-1"])'
+				);
+
+				const firstElement = focusableElements[0];
+				const lastElement = focusableElements[focusableElements.length - 1];
+
+				// Trap focus within controls when visible
+				if (!ctrls.classList.contains('hidden')) {
+					if (e.shiftKey && document.activeElement === firstElement) {
+						e.preventDefault();
+						lastElement.focus();
+					} else if (!e.shiftKey && document.activeElement === lastElement) {
+						e.preventDefault();
+						firstElement.focus();
+					}
 				}
 			}
-			
-			// Function to search address using Nominatim API and update map
-			function searchAddress() {
-				var addressInput = document.getElementById('addressInput');
-				var query = addressInput.value.trim();
-				if (!query) return;
-				var locationDiv = document.getElementById('location');
-				locationDiv.classList.add('loading');
-				locationDiv.innerHTML = "Searching for address...";
-				var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query);
-				fetch(url)
-				.then(function(response) { return response.json(); })
-				.then(function(data) {
-					if (data.length > 0) {
-						var result = data[0];
-						var lat = parseFloat(result.lat);
-						var lon = parseFloat(result.lon);
-						currentLatitude = lat;
-						currentLongitude = lon;
-						locationDiv.innerHTML = '<strong>Latitude:</strong> ' + lat + '<br><strong>Longitude:</strong> ' + lon;
-						fetchLocality(lat, lon);
-						fetchBusStops(lat, lon, function() {
-							initializeMap(lat, lon);
-							locationDiv.classList.remove('loading');
-						});
-					} else {
-						locationDiv.innerHTML = "Address not found.";
-						locationDiv.classList.remove('loading');
-					}
-				})
-				.catch(function(error) {
-					console.error('Error searching address:', error);
-					locationDiv.innerHTML = "Error searching for address.";
-					locationDiv.classList.remove('loading');
-				});
+		});
+
+		// Update ARIA states dynamically
+		document.getElementById('toggleBtn').onclick = () => {
+			const isHidden = ctrls.classList.contains('hidden');
+			ctrls.classList.toggle('hidden');
+			showBtn.style.display = isHidden ? 'none' : 'flex';
+			map.invalidateSize();
+
+			// Update ARIA states
+			document.getElementById('toggleBtn').setAttribute('aria-expanded', !isHidden);
+			document.getElementById('toggleBtn').setAttribute('aria-label',
+				isHidden ? 'Show Controls' : 'Hide Controls'
+			);
+		};
+
+		// Update fullscreen button ARIA state
+		document.getElementById('fullscreenBtn').onclick = () => {
+			const isFullscreen = !!document.fullscreenElement;
+			document.getElementById('fullscreenBtn').setAttribute('aria-pressed', !isFullscreen);
+			document.fullscreenElement
+				? document.exitFullscreen()
+				: document.documentElement.requestFullscreen();
+		};
+
+		// Add focus indicators for keyboard users
+		const style = document.createElement('style');
+		style.textContent = `
+			.controls:focus-within {
+				outline: 2px solid var(--primary);
+				outline-offset: 2px;
 			}
-			
-			window.addEventListener('load', function() {
-                // URL parameter synchronization for busId and busNo (tags)
-                var urlParams = new URLSearchParams(window.location.search);
-                var zipcodeParam = urlParams.get('zipcode');
-                var countryParam = urlParams.get('country');
-                
-                var addressParam = zipcodeParam + " " + countryParam; 
-                
-                
-				// Try to get current location. If fails, default location is used.
-				getCurrentLocation();
-				
-				document.getElementById('searchButton').addEventListener('click', function(e) {
-					e.preventDefault();
-					searchAddress();
-				});
-				
-				document.getElementById('addressInput').addEventListener('keypress', function(e) {
-					if (e.key === 'Enter') {
-						e.preventDefault();
-						searchAddress();
-					}
-				});
-				
-				// Add event listener for the update location button
-				document.getElementById('updateLocation').addEventListener('click', function(e) {
-					e.preventDefault();
-					var locationDiv = document.getElementById('location');
-					locationDiv.classList.add('loading');
-					locationDiv.innerHTML = "Fetching your location...<div class='spinner' id='spinner'></div>";
-					getCurrentLocation();
-				});
-                
-                
-                if(addressParam){
-                    document.getElementById('addressInput').value = addressParam;
-                    document.getElementById('searchButton').click();
-                }
-			});
-		</script>
-	</head>
-	<body>
-		<header>
-			<h1>Discover Your Location</h1>
-		</header>
-		<main id="display">
-			<div id="controls">
-				<input type="text" id="addressInput" placeholder="Enter an address to search...">
-				<button id="searchButton">Search</button>
-				<div style="margin-top:10px;">
-					<button id="updateLocation">Update Location</button>
-				</div>
-			</div>
-			<div id="location" class="loading" aria-live="polite">
-				Fetching your location...
-				<div class="spinner" id="spinner"></div>
-			</div>
-			<div id="map" style="opacity:0;"></div>
-		</main>
-	</body>
+
+			.controls-row input:focus,
+			.controls-row button:focus {
+				outline: 2px solid var(--primary);
+				outline-offset: 2px;
+			}
+
+			/* High contrast mode support */
+			@media (prefers-contrast: high) {
+				:root {
+					--primary: #0000ff;
+					--success: #008000;
+					--neutral: #666666;
+					--text: #000000;
+					--surface: #ffffff;
+					--border: #000000;
+				}
+			}
+
+			/* Reduced motion support */
+			@media (prefers-reduced-motion: reduce) {
+				* {
+					animation-duration: 0.01ms !important;
+					animation-iteration-count: 1 !important;
+					transition-duration: 0.01ms !important;
+				}
+			}
+		`;
+		document.head.appendChild(style);
+	</script>
+</body>
+
 </html>
