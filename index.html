@@ -407,6 +407,33 @@
 			font-size: 18px;
 		}
 
+		#results-counter {
+			position: absolute;
+			top: 16px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 900;
+			pointer-events: none;
+			background: rgba(255, 255, 255, 0.92);
+			color: var(--text);
+			padding: 8px 14px;
+			border-radius: var(--radius-full);
+			font-size: 0.8125rem;
+			font-weight: 600;
+			box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+			border: 1px solid rgba(226, 232, 240, 0.9);
+			opacity: 0;
+			transition: opacity 0.3s ease;
+			max-width: calc(100vw - 32px);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		#results-counter.visible {
+			opacity: 1;
+		}
+
 		/* Attribution must stay visible: OSM/tile providers and the Singapore Open
 		   Data Licence both require credit. Keep it subtle but present. */
 		.leaflet-control-attribution {
@@ -613,6 +640,25 @@
 		}
 
 		@media (max-width: 480px) {
+			#results-counter {
+				top: auto;
+				left: 12px;
+				right: 12px;
+				bottom: calc(150px + env(safe-area-inset-bottom));
+				transform: none;
+				z-index: 850;
+				width: auto;
+				max-width: none;
+				padding: 6px 10px;
+				font-size: 0.75rem;
+				text-align: center;
+			}
+
+			.controls.sheet-half ~ #map #results-counter,
+			.controls.sheet-expanded ~ #map #results-counter {
+				display: none;
+			}
+
 			.controls {
 				left: 0;
 				right: 0;
@@ -860,13 +906,14 @@
 		/* Ultra-small screens (e.g., 333x155) */
 		@media (max-width: 350px) {
 			#results-counter {
-				top: 8px !important;
-				left: 8px !important;
-				right: auto !important;
+				top: auto !important;
+				left: 10px !important;
+				right: 10px !important;
+				bottom: calc(136px + env(safe-area-inset-bottom)) !important;
 				transform: none !important;
 				font-size: 0.75rem !important;
-				padding: 4px 8px !important;
-				max-width: calc(100vw - 70px) !important;
+				padding: 5px 8px !important;
+				max-width: none !important;
 				white-space: nowrap !important;
 				overflow: hidden !important;
 				text-overflow: ellipsis !important;
@@ -1319,6 +1366,7 @@
 				font-size: 0.625rem !important;
 				padding: 3px 8px !important;
 				max-width: calc(100vw - 16px) !important;
+				pointer-events: none !important;
 				white-space: nowrap !important;
 				overflow: hidden !important;
 				text-overflow: ellipsis !important;
@@ -3004,28 +3052,12 @@
 		function createResultsCounter() {
 			const counter = document.createElement('div');
 			counter.id = 'results-counter';
-			counter.style.cssText = `
-				position: absolute;
-				top: 16px;
-				left: 50%;
-				transform: translateX(-50%);
-				background: var(--surface);
-				color: var(--text);
-				padding: 8px 16px;
-				border-radius: var(--radius);
-				font-size: 0.875rem;
-				font-weight: 500;
-				box-shadow: var(--shadow);
-				border: 1px solid var(--border);
-				z-index: 1000;
-				opacity: 0;
-				transition: opacity 0.3s ease;
-			`;
+			counter.setAttribute('aria-live', 'polite');
 			map.getContainer().appendChild(counter);
 
 			// Show counter after a short delay
 			setTimeout(() => {
-				counter.style.opacity = '1';
+				counter.classList.add('visible');
 			}, 500);
 
 			return counter;
