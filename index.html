@@ -2108,8 +2108,47 @@
 				});
 		}
 
-		// Local "Both" search: exact bus-stop code, then a road name, then a bus-stop
-		// name/road substring. Returns { lat, lon, name } or null (then Overpass runs).
+		// --- Local mall index (malls.jsonl) ------------------------------------------
+		// SG shopping malls with a coordinate, for offline mall search.
+		let localMalls = null; // array of { name, _n (lowercased), lat, lon }
+
+		function loadLocalMalls() {
+			return fetch('./malls.jsonl')
+				.then(r => r.ok ? r.text() : Promise.reject(new Error('malls.jsonl not found')))
+				.then(text => {
+					const arr = [];
+					for (const line of text.split('\n')) {
+						const trimmed = line.trim();
+						if (!trimmed) continue;
+						try {
+							const o = JSON.parse(trimmed);
+							if (o && o.name && typeof o.lat === 'number' && typeof o.lon === 'number') {
+								arr.push({ name: o.name, _n: o.name.toLowerCase(), lat: o.lat, lon: o.lon });
+							}
+						} catch (e) { /* skip */ }
+					}
+					if (arr.length) {
+						localMalls = arr;
+						console.debug('[Local] Loaded', arr.length, 'malls from malls.jsonl');
+					}
+				})
+				.catch(() => {
+					console.debug('[Local] malls.jsonl unavailable');
+				});
+		}
+
+		// Match a {name,_n} list by exact, then starts-with, then contains
+		function matchNamed(list, q) {
+			if (!list) return null;
+			const hit = list.find(s => s._n === q)
+				|| list.find(s => s._n.startsWith(q))
+				|| list.find(s => s._n.includes(q));
+			return hit ? { lat: hit.lat, lon: hit.lon, name: hit.name } : null;
+		}
+
+		// Local "Both" search: exact bus-stop code, then a mall name, then a road
+		// name, then a bus-stop name/road substring. Returns { lat, lon, name } or
+		// null (then Overpass place geocoding runs as a fallback).
 		function findLocalMatch(query) {
 			const q = query.trim().toLowerCase();
 			if (!q) return null;
@@ -2120,15 +2159,15 @@
 				if (byCode) return { lat: byCode.lat, lon: byCode.lon, name: byCode.tags.name };
 			}
 
-			// 2. Road name: exact, then starts-with, then contains
-			if (localStreets) {
-				const st = localStreets.find(s => s._n === q)
-					|| localStreets.find(s => s._n.startsWith(q))
-					|| localStreets.find(s => s._n.includes(q));
-				if (st) return { lat: st.lat, lon: st.lon, name: st.name };
-			}
+			// 2. Shopping mall (a common search destination)
+			const mall = matchNamed(localMalls, q);
+			if (mall) return mall;
 
-			// 3. Bus-stop name / road substring
+			// 3. Road name
+			const street = matchNamed(localStreets, q);
+			if (street) return street;
+
+			// 4. Bus-stop name / road substring
 			if (localStops) {
 				const byName = localStops.find(s =>
 					(s.tags.name || '').toLowerCase().includes(q) ||
@@ -2361,6 +2400,7 @@
 
 		loadLocalStops(); // bundled bus stops; falls back to Overpass if absent
 		loadLocalStreets(); // bundled street index for offline place search
+		loadLocalMalls(); // bundled shopping-mall index for offline search
 		loadStops();
 
 		// Enhanced keyboard navigation and accessibility

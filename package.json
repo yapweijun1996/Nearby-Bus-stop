@@ -8,7 +8,8 @@
     "dev": "vite",
     "data": "node scripts/build-stops.cjs",
     "streets": "node scripts/build-streets.cjs",
-    "build": "npm run data && npm run streets && vite build",
+    "malls": "node scripts/build-malls.cjs",
+    "build": "npm run data && npm run streets && npm run malls && vite build",
     "build:pages": "vite build",
     "preview": "vite preview"
   },
