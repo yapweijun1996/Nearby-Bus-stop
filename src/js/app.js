@@ -32,7 +32,7 @@ import { initSearchCombobox } from './search.js';
 
 			// Used only when provider === 'custom'. Example (MapTiler):
 			//   url: 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=YOUR_KEY',
-			//   attribution: 'Â© <a href="https://www.maptiler.com/">MapTiler</a> Â© OpenStreetMap contributors',
+			//   attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; OpenStreetMap contributors',
 			url: '',
 			attribution: '',
 			maxZoom: 19
@@ -41,7 +41,7 @@ import { initSearchCombobox } from './search.js';
 		const TILE_PRESETS = {
 			osm: {
 				url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-				attribution: 'Â© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
 				maxZoom: 19
 			}
 		};
@@ -51,7 +51,7 @@ import { initSearchCombobox } from './search.js';
 			: TILE_PRESETS.osm;
 
 		// Bus-stop data attribution (Singapore Open Data Licence) is always required.
-		const DATA_ATTRIBUTION = 'Bus data Â© <a href="https://datamall.lta.gov.sg/">LTA</a> (Singapore Open Data Licence)';
+		const DATA_ATTRIBUTION = 'Data &copy; <a href="https://datamall.lta.gov.sg/" title="LTA DataMall, Singapore Open Data Licence">LTA</a>';
 
 		const map = L.map('map', {
 			zoomControl: false,
@@ -908,11 +908,11 @@ import { initSearchCombobox } from './search.js';
 			if (!userMarker) {
 				userMarker = L.marker([pos.lat, pos.lon], { icon: userIcon })
 					.addTo(map)
-					.bindPopup('<div style="text-align: center;"><b>ðŸ“ Your Location</b><br>Searching for nearby bus stops...</div>')
+					.bindPopup('<div style="text-align: center;"><b>Your Location</b><br>Searching for nearby bus stops...</div>')
 					.openPopup();
 			} else {
 				userMarker.setLatLng([pos.lat, pos.lon]);
-				userMarker.bindPopup('<div style="text-align: center;"><b>ðŸ“ Your Location</b><br>Location updated</div>').openPopup();
+				userMarker.bindPopup('<div style="text-align: center;"><b>Your Location</b><br>Location updated</div>').openPopup();
 			}
 
 			// Smooth circle transition
@@ -1236,9 +1236,9 @@ import { initSearchCombobox } from './search.js';
 			const distance = map.distance([s.lat, s.lon], [userPos.lat, userPos.lon]);
 			const code = stopCode(s);
 			const hasCode = isValidBusCode(code);
-			const badge = escapeHtml(code || 'ðŸš');
+			const badge = escapeHtml(code || 'Stop');
 			const safeName = escapeHtml(s.tags?.name || 'Bus Stop');
-			const distLabel = formatDistance(distance) + ' Â· ' + walkMin(distance) + ' min walk';
+			const distLabel = formatDistance(distance) + ' - ' + walkMin(distance) + ' min walk';
 			const key = s.tags?.ref ? 'ref:' + s.tags.ref : 'pos:' + s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
 
 			const busIcon = L.divIcon({
@@ -1259,19 +1259,19 @@ import { initSearchCombobox } from './search.js';
 			});
 
 			const timesLink = hasCode
-				? `<a href="${arrivalUrl(code)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;"><span>ðŸ•</span> View Times</a>`
+				? `<a href="${arrivalUrl(code)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; background: #4f46e5; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">View Times</a>`
 				: '';
 
 			const marker = L.marker([s.lat, s.lon], { icon: busIcon })
 				.bindPopup(`
 					<div style="min-width: 200px;">
 						<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-							<span style="font-size: 1.25rem;">ðŸšŒ</span>
+							<span style="font-size: 0.75rem; font-weight: 700; color: #059669; text-transform: uppercase;">Bus</span>
 							<b style="color: #059669;">${badge}</b>
 						</div>
 						<div style="color: #4b5563; margin-bottom: 8px;">${safeName}</div>
 						<div style="display: flex; align-items: center; gap: 4px; margin-bottom: 12px;">
-							<span style="font-size: 0.875rem; color: #6b7280;">ðŸ“</span>
+							<span style="font-size: 0.875rem; color: #6b7280;">Distance</span>
 							<span style="font-size: 0.875rem; color: #6b7280;">${distLabel}</span>
 						</div>
 						${timesLink}

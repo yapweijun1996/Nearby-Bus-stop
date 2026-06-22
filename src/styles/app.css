@@ -660,10 +660,24 @@
 
 			.controls ~ #map .leaflet-bottom.leaflet-right {
 				bottom: calc(var(--controls-sheet-height, 0px) + 8px);
+				right: 10px;
+				left: auto;
 			}
 
 			.controls.sheet-expanded ~ #map .leaflet-control-attribution {
 				display: none !important;
+			}
+
+			.leaflet-control-attribution {
+				max-width: min(46vw, 170px);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				border-radius: var(--radius-full);
+				padding: 2px 7px !important;
+				font-size: 0.5625rem !important;
+				line-height: 1.35 !important;
+				box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 			}
 
 			.controls-row {
@@ -1222,7 +1236,7 @@
 				display: none !important;
 			}
 
-			/* Search is hidden until the ðŸ” toggle is tapped, then it slides in
+			/* Search is hidden until the search toggle is tapped, then it slides in
 			   above the list (which yields its space while searching). */
 			.search-row {
 				display: none;
