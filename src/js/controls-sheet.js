@@ -15,7 +15,7 @@ export function initControlsSheet({
 	}
 
 	function updateControlsHeight() {
-		if (!isMobileSheet()) {
+		if (!isMobileSheet() || ctrls.classList.contains('hidden')) {
 			document.documentElement.style.removeProperty('--controls-sheet-height');
 			return;
 		}
@@ -55,6 +55,19 @@ export function initControlsSheet({
 			closeSearchSuggestions();
 		}
 
+		requestAnimationFrame(() => {
+			updateControlsHeight();
+			map.invalidateSize();
+		});
+	}
+
+	function hideControls() {
+		ctrls.classList.add('hidden');
+		closeSearchSuggestions();
+		setWatchSearch(false);
+		showBtn.style.display = 'flex';
+		document.getElementById('toggleBtn').setAttribute('aria-expanded', 'false');
+		document.getElementById('toggleBtn').setAttribute('aria-label', 'Show Controls');
 		requestAnimationFrame(() => {
 			updateControlsHeight();
 			map.invalidateSize();
@@ -129,7 +142,7 @@ export function initControlsSheet({
 
 	document.getElementById('toggleBtn').onclick = () => {
 		if (isMobileSheet()) {
-			setSheetState(sheetState === 'collapsed' ? 'half' : 'collapsed');
+			hideControls();
 			return;
 		}
 

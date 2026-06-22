@@ -637,8 +637,9 @@
 			}
 
 			.controls.hidden {
-				transform: translateY(0);
-				opacity: 1;
+				transform: translateY(calc(100% + env(safe-area-inset-bottom) + 24px));
+				opacity: 0;
+				pointer-events: none;
 			}
 
 			.controls.sheet-collapsed {
